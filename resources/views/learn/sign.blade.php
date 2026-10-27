@@ -147,7 +147,13 @@
                 </span>
             </div>
 
-            @if($sign->is_static)
+            @if($sign->is_static || $sign->label === 'J')
+                @if($sign->label === 'J')
+                    <div style="background: rgba(108, 92, 231, 0.1); border: 1px solid rgba(108, 92, 231, 0.3); padding: 0.6rem 1rem; border-radius: var(--radius-md); margin-bottom: 0.8rem; font-size: 0.85rem; color: #5041c9; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Panduan Gerakan J: Angkat kelengkeng tegak, kemudian lukis bentuk cangkuk "J" di udara! Jejak neon akan muncul di skrin.</span>
+                    </div>
+                @endif
                 <div class="camera-box" id="camera-box">
                     <video id="webcam" class="camera-video" playsinline style="display: none;"></video>
                     <canvas id="output_canvas" class="camera-canvas"></canvas>
@@ -221,6 +227,7 @@
         HandLandmarker,
         FilesetResolver
     } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+    import { normaliseLandmarks, isPinkyUpShape, KnnClassifier, PredictionSmoother, HandMotionTracker, SequenceClassifier, SequenceBuffer } from "{{ asset('js/gesture-ai.js') }}";
 
     let handLandmarker = null;
     let runningMode = "VIDEO";
@@ -236,7 +243,33 @@
     let targetSign = "{{ strtoupper($sign->label) }}";
     let isMastered = {{ $progress->mastered ? 'true' : 'false' }};
     let consecutiveMatches = 0;
-    const MATCH_THRESHOLD_FRAMES = 12; // Hold correct gesture for ~0.4s to confirm
+    const MATCH_THRESHOLD_FRAMES = 5; // Hold gesture briefly to confirm
+    const knn = new KnnClassifier(5);
+    const smoother = new PredictionSmoother(5);
+    const motionTracker = new HandMotionTracker(45);
+    const seqClassifier = new SequenceClassifier(30);
+    const seqBuffer = new SequenceBuffer(45);
+    let mlReady = false;
+
+    async function loadDataset() {
+        try {
+            const resp = await fetch("{{ route('ai.public_dataset') }}");
+            if (resp.ok) {
+                const data = await resp.json();
+                knn.load(data.samples || []);
+                if (data.sequences) {
+                    seqClassifier.load(data.sequences);
+                }
+                mlReady = knn.labels.includes(targetSign) || seqClassifier.labels.includes(targetSign);
+                if (mlReady && badge) {
+                    badge.innerText = seqClassifier.labels.includes(targetSign) ? "Model AI Gerakan (DTW Aktif) 🎬" : "Model AI Pintar (ML Aktif) 🤖";
+                }
+            }
+        } catch(e) {
+            console.warn("Gagal memuatkan dataset AI:", e);
+        }
+    }
+    loadDataset();
 
     // Initialize MediaPipe model in background
     async function initMediaPipe() {
@@ -328,21 +361,47 @@
 
             if (results.landmarks && results.landmarks.length > 0) {
                 const landmarks = results.landmarks[0];
+                const norm = normaliseLandmarks(landmarks);
+                motionTracker.push(landmarks);
+                seqBuffer.push(norm);
                 drawHand(canvasCtx, landmarks, canvasElement.width, canvasElement.height);
+
+                // Draw sparkling neon trajectory trail for J
+                if (targetSign === 'J') {
+                    const trail = motionTracker.getTrail();
+                    const jActive = motionTracker.detectJMotion().matched;
+                    if (trail.length > 1) {
+                        canvasCtx.save();
+                        canvasCtx.beginPath();
+                        canvasCtx.strokeStyle = jActive ? "#2ed573" : "#ffeaa7";
+                        canvasCtx.lineWidth = 6;
+                        canvasCtx.lineCap = "round";
+                        canvasCtx.lineJoin = "round";
+                        canvasCtx.shadowColor = jActive ? "#2ed573" : "#fdcb6e";
+                        canvasCtx.shadowBlur = 14;
+                        trail.forEach((pt, i) => {
+                            const tx = pt.x * canvasElement.width;
+                            const ty = pt.y * canvasElement.height;
+                            if (i === 0) canvasCtx.moveTo(tx, ty);
+                            else canvasCtx.lineTo(tx, ty);
+                        });
+                        canvasCtx.stroke();
+                        canvasCtx.restore();
+                    }
+                }
 
                 // Heuristic Classifier for Static BIM signs
                 const evalResult = evaluateGesture(landmarks, targetSign);
 
-                // Update UI meters
-                if (confidencePct) confidencePct.innerText = evalResult.confidence + "%";
-                if (confidenceBar) confidenceBar.style.width = evalResult.confidence + "%";
+                // Dynamic signs (J) need only 2 frames to confirm, static signs need 5 frames
+                const targetFramesRequired = targetSign === 'J' ? 2 : 5;
 
                 if (evalResult.matched) {
                     consecutiveMatches++;
-                    if (feedbackText) feedbackText.innerText = "Bagus! Tahan isyarat (" + consecutiveMatches + "/" + MATCH_THRESHOLD_FRAMES + ")...";
+                    if (feedbackText) feedbackText.innerText = "Bagus! Tahan isyarat (" + consecutiveMatches + "/" + targetFramesRequired + ")...";
                     if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay feedback-success";
 
-                    if (consecutiveMatches >= MATCH_THRESHOLD_FRAMES) {
+                    if (consecutiveMatches >= targetFramesRequired) {
                         onGestureSuccess(evalResult.confidence);
                         consecutiveMatches = 0;
                     }
@@ -391,13 +450,11 @@
         });
     }
 
-    // Heuristic geometry classifier for BIM Static Signs
+    // ML + Heuristic Hybrid Classifier for BIM Signs
     function evaluateGesture(lm, target) {
-        // Hand orientation: Wrist is lm[0]
-        const wrist = lm[0];
         // Tips: Thumb(4), Index(8), Middle(12), Ring(16), Pinky(20)
         // PIPs: Index(6), Middle(10), Ring(14), Pinky(18)
-        const isExtended = (tip, pip) => lm[tip].y < lm[pip].y; // Higher in canvas (lower Y) = extended
+        const isExtended = (tip, pip) => lm[tip].y < lm[pip].y;
         const isCurled = (tip, pip) => lm[tip].y > lm[pip].y;
 
         const indexUp = isExtended(8, 6);
@@ -406,6 +463,71 @@
         const pinkyUp = isExtended(20, 18);
         const thumbOut = Math.abs(lm[4].x - lm[2].x) > 0.05;
 
+        // SPECIAL CASE 1: TARGET J (DYNAMIC HOOK)
+        if (target === 'J') {
+            const isPinky = isPinkyUpShape(lm);
+            if (isPinky) {
+                const jCheck = motionTracker ? motionTracker.detectJMotion() : { matched: false };
+                if (jCheck && jCheck.matched) {
+                    return {
+                        matched: true,
+                        confidence: jCheck.confidence || 96,
+                        hint: "Hebat! Gerakan cangkuk J dikesan dengan sempurna! ⭐"
+                    };
+                }
+                return {
+                    matched: false,
+                    confidence: 70,
+                    hint: "Bagus! Sekarang lukis bentuk cangkuk J di udara (turun ke bawah lalu lengkung ke atas)."
+                };
+            }
+            return {
+                matched: false,
+                confidence: 30,
+                hint: "Tegakkan jari kelengkeng dahulu, kemudian buat pergerakan cangkuk J."
+            };
+        }
+
+        // SPECIAL CASE 2: TARGET I (STATIC PINKY UP)
+        if (target === 'I') {
+            const isPinky = isPinkyUpShape(lm);
+            if (isPinky) {
+                const jCheck = motionTracker ? motionTracker.detectJMotion() : { matched: false };
+                if (jCheck && jCheck.matched) {
+                    return {
+                        matched: false,
+                        confidence: 60,
+                        hint: "Ini isyarat J (cangkuk). Untuk isyarat I, tahan tangan pegun tanpa melukis cangkuk."
+                    };
+                }
+                return {
+                    matched: true,
+                    confidence: 96,
+                    hint: "Bagus! Tahan isyarat I pegun..."
+                };
+            }
+            return {
+                matched: false,
+                confidence: 30,
+                hint: "Tegakkan hanya jari kelengkeng ke atas untuk isyarat I."
+            };
+        }
+
+        // 1. If Machine Learning data exists for other signs, evaluate using KnnClassifier
+        if (knn.size > 0 && knn.labels.includes(target)) {
+            const norm = normaliseLandmarks(lm);
+            const pred = knn.predict(norm, motionTracker);
+            if (pred.label === target && pred.confidence >= 50) {
+                return {
+                    matched: true,
+                    confidence: pred.confidence,
+                    hint: "Bagus! Pengecaman AI mengesahkan isyarat " + target + " (" + pred.confidence + "%). Tahan..."
+                };
+            }
+        }
+
+        // 2. Heuristic geometry classifier fallback for other signs
+        const wrist = lm[0];
         let matched = false;
         let confidence = 40;
         let hint = "Tiru kedudukan jari mengikut panduan...";
@@ -450,12 +572,35 @@
                 }
                 break;
             case 'I':
-                // Only pinky finger up
+                // Only pinky finger up, hand must be held still
                 if (!indexUp && !middleUp && !ringUp && pinkyUp) {
-                    matched = true;
-                    confidence = 95;
+                    if (motionTracker && !motionTracker.isStill(0.09)) {
+                        matched = false;
+                        confidence = 65;
+                        hint = "Bentuk jari betul! Sekarang tahan tangan diam (pegun) tanpa bergerak.";
+                    } else {
+                        matched = true;
+                        confidence = 95;
+                    }
                 } else {
                     hint = "Tegakkan hanya jari kelengkeng.";
+                }
+                break;
+            case 'J':
+                // Pinky finger up + J hook motion
+                if (!indexUp && !middleUp && !ringUp && pinkyUp) {
+                    const jCheck = motionTracker ? motionTracker.detectJMotion() : { matched: false };
+                    if (jCheck.matched) {
+                        matched = true;
+                        confidence = jCheck.confidence || 95;
+                        hint = "Hebat! Gerakan cangkuk J dikesan dengan sempurna! ⭐";
+                    } else {
+                        matched = false;
+                        confidence = 65;
+                        hint = "Bagus! Sekarang gerakkan kelengkeng melukis cangkuk J di udara.";
+                    }
+                } else {
+                    hint = "Tegakkan jari kelengkeng dahulu, kemudian buat pergerakan cangkuk J.";
                 }
                 break;
             case 'L':

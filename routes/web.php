@@ -69,6 +69,9 @@ Route::middleware(['auth:web', 'role:parent,teacher'])->name('guardian.')->prefi
     Route::delete('/child/{student}', [GuardianController::class, 'unlinkChild'])->name('child.unlink');
 });
 
+// AI Dataset Endpoint (Accessible for student learning & camera recognition)
+Route::get('/ai/dataset', [AiTrainingController::class, 'dataset'])->name('ai.public_dataset');
+
 // ==========================================
 // Admin Control Center (Protected by admin role)
 // ==========================================
@@ -84,6 +87,9 @@ Route::middleware(['auth:web', 'role:admin'])->name('admin.')->prefix('admin')->
     // AI Training Studio
     Route::get('/ai-studio', [AiTrainingController::class, 'studio'])->name('ai.studio');
     Route::post('/ai-studio/sample', [AiTrainingController::class, 'storeSample'])->name('ai.sample.store');
+    Route::post('/ai-studio/sign', [AiTrainingController::class, 'storeSign'])->name('ai.sign.store');
     Route::get('/ai-studio/export', [AiTrainingController::class, 'exportCsv'])->name('ai.export');
+    Route::post('/ai-studio/import', [AiTrainingController::class, 'importCsv'])->name('ai.import');
+    Route::get('/ai-studio/dataset', [AiTrainingController::class, 'dataset'])->name('ai.dataset');
     Route::post('/ai-studio/clear', [AiTrainingController::class, 'clearSamples'])->name('ai.clear');
 });

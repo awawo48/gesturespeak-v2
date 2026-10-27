@@ -79,7 +79,7 @@
                         <a href="{{ route('admin.signs') }}" class="nav-item {{ request()->routeIs('admin.signs') ? 'active' : '' }}">
                             <i class="fa-solid fa-hands-asl-interpreting"></i> Isyarat
                         </a>
-                        <a href="{{ route('admin.ai.studio') }}" class="nav-item {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}" style="color: #6c5ce7; font-weight: 800;">
+                        <a href="{{ route('admin.ai.studio') }}" class="nav-item {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}" @unless(request()->routeIs('admin.ai.*')) style="color: #6c5ce7; font-weight: 800;" @endunless>
                             <i class="fa-solid fa-robot"></i> AI Studio
                         </a>
                     @else
