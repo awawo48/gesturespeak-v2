@@ -52,16 +52,20 @@ class AiTrainingController extends Controller
             'label' => ['required', 'string', 'max:50'],
             'word' => ['required', 'string', 'max:100'],
             'meaning_en' => ['nullable', 'string', 'max:100'],
+            'is_static' => ['nullable', 'boolean'],
         ]);
 
         $label = strtoupper(trim($data['label']));
+        $isStatic = $request->boolean('is_static', true);
         $sign = Sign::firstOrCreate(
             ['category_id' => $data['category_id'], 'label' => $label],
             [
                 'word' => trim($data['word']),
                 'meaning_en' => $data['meaning_en'] ?? null,
-                'is_static' => true,
-                'instructions' => 'Salin bentuk tangan perlahan-lahan dan tahan di hadapan kamera.',
+                'is_static' => $isStatic,
+                'instructions' => $isStatic
+                    ? 'Salin bentuk tangan perlahan-lahan dan tahan di hadapan kamera.'
+                    : 'Ikuti pergerakan tangan dari mula hingga akhir di hadapan kamera.',
                 'sort_order' => (Sign::where('category_id', $data['category_id'])->max('sort_order') ?? 0) + 1,
             ]
         );
@@ -92,7 +96,7 @@ class AiTrainingController extends Controller
             $data = $request->validate([
                 'label' => ['required', 'string', 'max:50'],
                 'frames' => ['required', 'array', 'min:8', 'max:120'], // Sequence of frames
-                'frames.*' => ['required', 'array', 'size:63'],
+                'frames.*' => ['required', 'array', 'min:63', 'max:78'],
                 'frames.*.*' => ['numeric'],
             ]);
 
@@ -117,11 +121,11 @@ class AiTrainingController extends Controller
             ]);
         }
 
-        // Static burst or single samples
+        // Static burst or single samples (63 hand coords or 78 hand+face coords)
         $data = $request->validate([
             'label' => ['required', 'string', 'max:50'],
             'samples' => ['required', 'array', 'min:1', 'max:200'],
-            'samples.*' => ['required', 'array', 'size:63'], // 21 landmarks * (x,y,z)
+            'samples.*' => ['required', 'array', 'min:63', 'max:78'],
             'samples.*.*' => ['numeric'],
         ]);
 
@@ -183,6 +187,20 @@ class AiTrainingController extends Controller
                 $featureIdx[] = $idx;
             }
         }
+        $faceColNames = [
+            'face_ix', 'face_iy', 'face_px', 'face_py',
+            'prox_forehead', 'prox_eye', 'prox_cheek', 'prox_mouth', 'prox_chin',
+            'expr_happy', 'expr_sad', 'expr_angry', 'expr_surprised', 'expr_question', 'has_face',
+        ];
+        $faceIdx = [];
+        foreach ($faceColNames as $fc) {
+            $idx = array_search($fc, $header, true);
+            if ($idx !== false) {
+                $faceIdx[] = $idx;
+            }
+        }
+        $hasAllFaceCols = count($faceIdx) === 15;
+
         if ($labelIdx === false) {
             fclose($handle);
 
@@ -204,9 +222,17 @@ class AiTrainingController extends Controller
                 continue;
             }
 
+            if ($hasAllFaceCols) {
+                $faceVals = array_map(fn ($idx) => $line[$idx] ?? 0, $faceIdx);
+                if (! array_filter($faceVals, fn ($v) => ! is_numeric($v)) && floatval($faceVals[14]) > 0.5) {
+                    $features = array_merge($features, $faceVals);
+                }
+            }
+
             $labelsInFile[$label] = true;
             $rows[] = [
                 'label' => $label,
+                'sample_type' => 'static',
                 'features' => json_encode(GestureSample::normalise($features)),
                 'user_id' => Auth::id(),
                 'created_at' => $now,
@@ -275,18 +301,27 @@ class AiTrainingController extends Controller
         return response()->stream(function () {
             $handle = fopen('php://output', 'w');
 
-            // Header row: label, x0, y0, z0, ... x20, y20, z20
+            // Header row: label, x0, y0, z0, ... x20, y20, z20 + 15 optional face context columns
             $colNames = ['label'];
             for ($i = 0; $i < 21; $i++) {
                 $colNames[] = "x{$i}";
                 $colNames[] = "y{$i}";
                 $colNames[] = "z{$i}";
             }
+            $colNames = array_merge($colNames, [
+                'face_ix', 'face_iy', 'face_px', 'face_py',
+                'prox_forehead', 'prox_eye', 'prox_cheek', 'prox_mouth', 'prox_chin',
+                'expr_happy', 'expr_sad', 'expr_angry', 'expr_surprised', 'expr_question', 'has_face',
+            ]);
             fputcsv($handle, $colNames);
 
-            GestureSample::chunkById(500, function ($samples) use ($handle) {
+            GestureSample::where('sample_type', 'static')->chunkById(500, function ($samples) use ($handle) {
                 foreach ($samples as $sample) {
-                    $row = array_merge([$sample->label], $sample->features);
+                    $feat = is_array($sample->features) ? $sample->features : [];
+                    if (count($feat) === 63) {
+                        $feat = array_merge($feat, array_fill(0, 15, 0));
+                    }
+                    $row = array_merge([$sample->label], array_slice($feat, 0, 78));
                     fputcsv($handle, $row);
                 }
             });
@@ -316,6 +351,7 @@ class AiTrainingController extends Controller
         return response()->json([
             'success' => true,
             'counts' => $this->counts(),
+            'sequence_counts' => $this->sequenceCounts(),
             'total_all' => GestureSample::count(),
         ]);
     }

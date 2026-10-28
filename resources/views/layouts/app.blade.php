@@ -36,7 +36,13 @@
             </a>
 
             <nav class="nav-links">
-                @if(Auth::guard('student')->check())
+                @php
+                    $isAdultRoute = request()->routeIs('admin.*', 'guardian.*');
+                    $hasStudent = Auth::guard('student')->check();
+                    $hasAdult = Auth::guard('web')->check();
+                @endphp
+
+                @if($hasStudent && !($isAdultRoute && $hasAdult))
                     {{-- Child Learner Navbar --}}
                     @php $currentStudent = Auth::guard('student')->user(); @endphp
                     <a href="{{ route('learn.hub') }}" class="nav-item {{ request()->routeIs('learn.*') ? 'active' : '' }}">
@@ -57,12 +63,12 @@
 
                     <form action="{{ route('student.logout') }}" method="POST" style="display: inline;">
                         @csrf
-                        <button type="submit" class="btn btn-outline btn-sm" title="Keluar / Selesai Belajar">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar
+                        <button type="submit" class="btn btn-outline btn-sm" title="{{ $hasAdult ? 'Kembali ke Dashboard Ibu Bapa / Guru' : 'Keluar / Selesai Belajar' }}">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i> {{ $hasAdult ? 'Tamat Mod Murid' : 'Keluar' }}
                         </button>
                     </form>
 
-                @elseif(Auth::guard('web')->check())
+                @elseif($hasAdult)
                     {{-- Adult (Parent / Teacher / Admin) Navbar --}}
                     @php $currentUser = Auth::guard('web')->user(); @endphp
 

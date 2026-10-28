@@ -55,11 +55,9 @@
                         <i class="fa-solid fa-play"></i> Video
                     </span>
                 @endif
-                @if($sign->is_static)
-                    <span title="Boleh Dilatih Guna Kamera AI" style="font-size: 0.8rem; background: #fef3c7; color: #d97706; padding: 0.2rem 0.5rem; border-radius: var(--radius-full);">
-                        <i class="fa-solid fa-camera"></i> AI
-                    </span>
-                @endif
+                <span title="Boleh Dilatih Guna Kamera AI" style="font-size: 0.8rem; background: #fef3c7; color: #d97706; padding: 0.2rem 0.5rem; border-radius: var(--radius-full);">
+                    <i class="fa-solid fa-camera"></i> AI
+                </span>
             </div>
         </a>
     @endforeach
