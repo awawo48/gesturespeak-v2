@@ -33,13 +33,11 @@ Route::prefix('student')->name('student.')->group(function () {
 // ==========================================
 // Option 2: Adult Authentication (Parent, Teacher, Admin)
 // ==========================================
-Route::middleware('guest:web')->group(function () {
-    Route::get('/login', [AdultAuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AdultAuthController::class, 'login']);
-    Route::get('/register', [AdultAuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [AdultAuthController::class, 'register']);
-});
-Route::post('/logout', [AdultAuthController::class, 'logout'])->name('logout')->middleware('auth:web');
+Route::get('/login', [AdultAuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [AdultAuthController::class, 'login']);
+Route::get('/register', [AdultAuthController::class, 'showRegister'])->name('register');
+Route::post('/register', [AdultAuthController::class, 'register']);
+Route::post('/logout', [AdultAuthController::class, 'logout'])->name('logout');
 
 // ==========================================
 // Child Learning Pipeline (Protected by student guard)

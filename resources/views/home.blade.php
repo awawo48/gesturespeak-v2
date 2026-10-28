@@ -31,9 +31,23 @@
             Masuk dengan <strong>Kod Murid</strong> & <strong>PIN 4-digit</strong> yang diberikan oleh ibu bapa atau guru untuk mula belajar dan kumpul bintang!
         </p>
 
-        <a href="{{ route('student.login') }}" class="btn btn-accent btn-lg" style="width: 100%;">
-            <i class="fa-solid fa-gamepad"></i> Mula Belajar & Main Sekarang!
-        </a>
+        @if(Auth::guard('student')->check())
+            <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                <a href="{{ route('learn.hub') }}" class="btn btn-accent btn-lg" style="flex: 1;">
+                    <i class="fa-solid fa-gamepad"></i> Teruskan Belajar ({{ Auth::guard('student')->user()->name }})
+                </a>
+                <form action="{{ route('student.logout') }}" method="POST" style="margin: 0;">
+                    @csrf
+                    <button type="submit" class="btn btn-outline btn-lg" title="Log keluar sesi murid">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    </button>
+                </form>
+            </div>
+        @else
+            <a href="{{ route('student.login') }}" class="btn btn-accent btn-lg" style="width: 100%;">
+                <i class="fa-solid fa-gamepad"></i> Mula Belajar & Main Sekarang!
+            </a>
+        @endif
     </div>
 
     {{-- OPTION 2: PARENT & TEACHER (AND ADMIN) --}}
@@ -51,14 +65,28 @@
             Daftar akaun, cipta profil anak, kongsi kod murid bersama guru, dan pantau kemajuan serta pencapaian kuiz secara langsung.
         </p>
 
-        <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
-            <a href="{{ route('login') }}" class="btn btn-primary" style="flex: 1; min-width: 140px;">
-                <i class="fa-solid fa-right-to-bracket"></i> Log Masuk
-            </a>
-            <a href="{{ route('register') }}" class="btn btn-outline" style="flex: 1; min-width: 140px;">
-                <i class="fa-solid fa-user-plus"></i> Daftar Baru
-            </a>
-        </div>
+        @if($adultUser = Auth::guard('web')->user())
+            <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
+                <a href="{{ route($adultUser->homeRoute()) }}" class="btn btn-primary" style="flex: 1; min-width: 160px;">
+                    <i class="fa-solid fa-gauge-high"></i> Buka Dashboard ({{ $adultUser->name }})
+                </a>
+                <form action="{{ route('logout') }}" method="POST" style="margin: 0;">
+                    @csrf
+                    <button type="submit" class="btn btn-outline" title="Log keluar akaun dewasa">
+                        <i class="fa-solid fa-power-off"></i> Log Keluar
+                    </button>
+                </form>
+            </div>
+        @else
+            <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
+                <a href="{{ route('login') }}" class="btn btn-primary" style="flex: 1; min-width: 140px;">
+                    <i class="fa-solid fa-right-to-bracket"></i> Log Masuk
+                </a>
+                <a href="{{ route('register') }}" class="btn btn-outline" style="flex: 1; min-width: 140px;">
+                    <i class="fa-solid fa-user-plus"></i> Daftar Baru
+                </a>
+            </div>
+        @endif
     </div>
 
 </div>

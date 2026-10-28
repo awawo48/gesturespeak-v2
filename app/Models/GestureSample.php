@@ -30,7 +30,10 @@ class GestureSample extends Model
      * public/js/gesture-ai.js). Idempotent: normalising already-normalised data
      * returns the same numbers, so raw and exported CSVs can both be imported.
      *
-     * @param  array<int, float>  $features  63 numbers: x0,y0,z0 ... x20,y20,z20
+     * Supports 63 numbers (21 hand landmarks * x,y,z) as well as 78 numbers
+     * (63 hand coordinates + 15 normalized face-anchor & expression features).
+     *
+     * @param  array<int, float>  $features  63 or 78 numbers
      * @return array<int, float>
      */
     public static function normalise(array $features): array
@@ -49,8 +52,19 @@ class GestureSample extends Model
         }
 
         $scale = $maxAbs > 1e-6 ? $maxAbs : 1.0;
+        $handNorm = array_map(fn ($v) => round($v / $scale, 5), $rel);
 
-        return array_map(fn ($v) => round($v / $scale, 5), $rel);
+        if (count($features) >= 78) {
+            $faceNorm = [];
+            for ($j = 63; $j < 78; $j++) {
+                $fv = max(-2.5, min(2.5, $features[$j]));
+                $faceNorm[] = round($fv, 5);
+            }
+
+            return array_merge($handNorm, $faceNorm);
+        }
+
+        return $handNorm;
     }
 
     /**
