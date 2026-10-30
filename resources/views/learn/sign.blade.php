@@ -549,6 +549,12 @@
             lastVideoTime = -1;
             webcamRunning = true;
 
+            window.Kiko?.say(
+                "Kamera dah aktif! Cuba tunjukkan isyarat \"" + signWord + "\" pada Kiko! 👀🤟",
+                "coach",
+                { duration: 4500 }
+            );
+
             if (handLandmarker) {
                 if (enableFaceAi && !faceLandmarker) initFaceMediaPipe();
                 if (badge) {
@@ -766,6 +772,13 @@
 
                 if (evalResult.matched) {
                     consecutiveMatches++;
+                    if (consecutiveMatches === 2) {
+                        window.Kiko?.say(
+                            "Wah, betul tu! Tahan tangan awak sekejap lagi! ✨",
+                            "happy",
+                            { openBubble: false, duration: 2500 }
+                        );
+                    }
                     if (feedbackText) {
                         const praisePrefix = evalResult.faceHintOk ? `${evalResult.faceHintOk} ` : "Bagus! ";
                         feedbackText.innerText = isStaticSign
@@ -1121,7 +1134,14 @@
                 if (starNav) starNav.innerText = data.total_stars;
 
                 if (data.stars_awarded > 0) {
-                    alert("🌟 TAHNIAH! Anda berjaya menguasai isyarat " + signWord + "! +" + data.stars_awarded + " Bintang!");
+                    window.Kiko?.celebrate(
+                        "YEAY!! Tahniah! Awak berjaya menguasai isyarat \"" + signWord + "\"! 🎉",
+                        { stars: data.stars_awarded }
+                    );
+                } else {
+                    window.Kiko?.celebrate(
+                        "Hebat sekali! Isyarat \"" + signWord + "\" awak sangat tepat dan kemas! 🌟"
+                    );
                 }
             }
         } catch (e) {

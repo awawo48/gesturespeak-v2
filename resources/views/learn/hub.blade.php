@@ -16,10 +16,16 @@
         </div>
     </div>
 
-    <div style="text-align: right; background: rgba(255,255,255,0.2); padding: 1rem 1.5rem; border-radius: var(--radius-md); backdrop-filter: blur(8px);">
-        <div style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase;">Bintang Terkumpul</div>
-        <div style="font-size: 2.5rem; font-weight: 900; color: #ffeaa7; font-family: var(--font-display);">
-            ⭐ {{ $student->stars }}
+    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <button type="button" onclick="window.Kiko?.randomCheer(true)" class="btn" style="background: rgba(255,255,255,0.95); color: #6c5ce7; font-weight: 900; border-radius: 999px; padding: 0.7rem 1.25rem; box-shadow: 0 6px 16px rgba(0,0,0,0.12);">
+            🐾 Semangat Kiko!
+        </button>
+
+        <div style="text-align: right; background: rgba(255,255,255,0.2); padding: 1rem 1.5rem; border-radius: var(--radius-md); backdrop-filter: blur(8px);">
+            <div style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase;">Bintang Terkumpul</div>
+            <div style="font-size: 2.5rem; font-weight: 900; color: #ffeaa7; font-family: var(--font-display);">
+                ⭐ {{ $student->stars }}
+            </div>
         </div>
     </div>
 </div>

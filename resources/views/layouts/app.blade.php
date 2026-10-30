@@ -154,6 +154,10 @@
         <p style="margin-top: 0.3rem; font-size: 0.8rem; color: #a4b0be;">Dikuasakan oleh MediaPipe AI & Laravel &bull; Hak Cipta Terpelihara</p>
     </footer>
 
+    @if(request()->routeIs('learn.*', 'quiz.*', 'student.*'))
+        @include('partials.kiko-mascot')
+    @endif
+
     @stack('scripts')
 </body>
 </html>
