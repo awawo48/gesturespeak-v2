@@ -88,12 +88,24 @@ class AdultAuthController extends Controller
             'password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
-        $user = User::create($data);
+        $isTeacher = $data['role'] === User::ROLE_TEACHER;
+
+        // Teachers need Admin approval; parents are approved immediately
+        $user = User::create([
+            ...$data,
+            'status' => $isTeacher ? User::STATUS_PENDING : User::STATUS_APPROVED,
+            'approved_at' => $isTeacher ? null : now(),
+        ]);
 
         Auth::guard('student')->logout();
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
         $request->session()->forget('url.intended');
+
+        if ($isTeacher) {
+            return redirect()->route('guardian.pending')
+                ->with('success', 'Akaun guru anda telah didaftarkan dan sedang menunggu kelulusan Admin.');
+        }
 
         return redirect()->route('guardian.dashboard')
             ->with('success', 'Selamat datang ke GestureSpeak! Mulakan dengan mendaftarkan profil murid pertama anda.');

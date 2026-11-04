@@ -27,6 +27,7 @@ class AdminController extends Controller
             'total_users' => User::count(),
             'total_parents' => User::where('role', User::ROLE_PARENT)->count(),
             'total_teachers' => User::where('role', User::ROLE_TEACHER)->count(),
+            'pending_teachers' => User::where('role', User::ROLE_TEACHER)->where('status', User::STATUS_PENDING)->count(),
             'total_students' => Student::count(),
             'total_signs' => Sign::count(),
             'total_practices' => SignProgress::sum('practice_count'),
@@ -59,13 +60,37 @@ class AdminController extends Controller
             $query->where('role', $role);
         }
 
-        $users = $query->latest()->paginate(15)->withQueryString();
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        $users = $query->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest()->paginate(15)->withQueryString();
 
         return view('admin.users', [
             'users' => $users,
             'search' => $search,
             'role' => $role,
+            'status' => $status,
+            'pendingCount' => User::where('role', User::ROLE_TEACHER)->where('status', User::STATUS_PENDING)->count(),
         ]);
+    }
+
+    public function approveUser(User $user): RedirectResponse
+    {
+        $user->update(['status' => User::STATUS_APPROVED, 'approved_at' => now()]);
+
+        return back()->with('success', "Akaun {$user->name} telah diluluskan.");
+    }
+
+    public function rejectUser(User $user): RedirectResponse
+    {
+        if ($user->isAdmin()) {
+            return back()->with('error', 'Akaun admin tidak boleh ditolak.');
+        }
+
+        $user->update(['status' => User::STATUS_REJECTED, 'approved_at' => null]);
+
+        return back()->with('success', "Akaun {$user->name} telah ditolak.");
     }
 
     public function deleteUser(User $user): RedirectResponse

@@ -129,6 +129,13 @@
 
         const q = questions[currentIndex];
         questionCounter.innerText = "Soalan " + (currentIndex + 1) + " / " + totalQuestions;
+        if (currentIndex > 0) {
+            window.Kiko?.say(
+                "Soalan ke-" + (currentIndex + 1) + "! Perhatikan isyarat ini baik-baik ya! 👀🐾",
+                "coach",
+                { openBubble: false }
+            );
+        }
 
         // Render Media (Video demo or fallback image or big letter)
         mediaContainer.innerHTML = "";
@@ -179,9 +186,17 @@
             score++;
             scoreCounter.innerText = "⭐ " + score + " Mata";
             speak("Betul!");
+            window.Kiko?.celebrate(
+                "Yeay!! Tepat sekali! Jawapan \"" + correct + "\" memang betul! 🎉⭐",
+                { duration: 1500 }
+            );
         } else {
             btn.classList.add("option-wrong");
             speak("Jawapan yang betul ialah " + correct);
+            window.Kiko?.encourage(
+                "Hampir tepat! Jawapan sebenar ialah \"" + correct + "\". Cuba soalan seterusnya ya, awak pasti boleh! 💪💖",
+                { duration: 1500 }
+            );
             // Highlight correct option
             allBtns.forEach(b => {
                 if (b.innerText.toUpperCase() === correct.toUpperCase()) {
@@ -219,6 +234,10 @@
         document.getElementById("results-score-text").innerText = "Anda menjawab " + score + " daripada " + totalQuestions + " soalan dengan tepat!";
 
         speak("Tahniah! Anda dapat " + starCount + " bintang!");
+        window.Kiko?.celebrate(
+            "Tahniah tamatkan kuiz! Awak dapat " + score + "/" + totalQuestions + " betul! 🥳",
+            { stars: starCount, duration: 7000 }
+        );
 
         // Submit score to database via AJAX
         try {
@@ -242,9 +261,14 @@
     }
 
     function speak(text) {
+        if (window.Kiko && typeof window.Kiko.speak === 'function') {
+            window.Kiko.speak(text);
+            return;
+        }
         if (!('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'ms-MY';
         utter.rate = 0.95;
         window.speechSynthesis.speak(utter);
     }

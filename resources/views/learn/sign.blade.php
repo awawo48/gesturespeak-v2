@@ -549,6 +549,12 @@
             lastVideoTime = -1;
             webcamRunning = true;
 
+            window.Kiko?.say(
+                "Kamera dah aktif! Cuba tunjukkan isyarat \"" + signWord + "\" pada Kiko! 👀🤟",
+                "coach",
+                { duration: 4500 }
+            );
+
             if (handLandmarker) {
                 if (enableFaceAi && !faceLandmarker) initFaceMediaPipe();
                 if (badge) {
@@ -766,6 +772,13 @@
 
                 if (evalResult.matched) {
                     consecutiveMatches++;
+                    if (consecutiveMatches === 2) {
+                        window.Kiko?.say(
+                            "Wah, betul tu! Tahan tangan awak sekejap lagi! ✨",
+                            "happy",
+                            { openBubble: false, duration: 2500 }
+                        );
+                    }
                     if (feedbackText) {
                         const praisePrefix = evalResult.faceHintOk ? `${evalResult.faceHintOk} ` : "Bagus! ";
                         feedbackText.innerText = isStaticSign
@@ -1121,7 +1134,14 @@
                 if (starNav) starNav.innerText = data.total_stars;
 
                 if (data.stars_awarded > 0) {
-                    alert("🌟 TAHNIAH! Anda berjaya menguasai isyarat " + signWord + "! +" + data.stars_awarded + " Bintang!");
+                    window.Kiko?.celebrate(
+                        "YEAY!! Tahniah! Awak berjaya menguasai isyarat \"" + signWord + "\"! 🎉",
+                        { stars: data.stars_awarded }
+                    );
+                } else {
+                    window.Kiko?.celebrate(
+                        "Hebat sekali! Isyarat \"" + signWord + "\" awak sangat tepat dan kemas! 🌟"
+                    );
                 }
             }
         } catch (e) {
@@ -1137,22 +1157,18 @@
 </script>
 
 <script>
-    // Web Speech API (Text-to-Speech)
+    // Text-to-Speech (Uses ElevenLabs Kiko voice with browser Web Speech fallback)
     function speakWord(text) {
-        if (!('speechSynthesis' in window)) {
-            console.log("Web Speech API tidak disokong.");
+        if (window.Kiko && typeof window.Kiko.speak === 'function') {
+            window.Kiko.speak(text);
             return;
         }
+        if (!('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'ms-MY';
         utter.rate = 0.9;
         utter.pitch = 1.1;
-
-        // Try to pick Malay or Indonesian voice if installed
-        const voices = window.speechSynthesis.getVoices();
-        const myVoice = voices.find(v => v.lang.startsWith('ms') || v.lang.startsWith('id') || v.lang.includes('Malay'));
-        if (myVoice) utter.voice = myVoice;
-
         window.speechSynthesis.speak(utter);
     }
 </script>

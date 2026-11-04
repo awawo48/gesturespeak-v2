@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 /**
  * Child learner (Option 1 login: Student Code + PIN).
  */
-#[Fillable(['student_code', 'name', 'age', 'pin', 'avatar', 'stars', 'created_by'])]
+#[Fillable(['student_code', 'name', 'age', 'pin', 'avatar', 'stars', 'created_by', 'teacher_note', 'teacher_note_by', 'teacher_note_updated_at', 'assigned_category_id'])]
 #[Hidden(['pin', 'remember_token'])]
 class Student extends Authenticatable
 {
@@ -27,6 +28,7 @@ class Student extends Authenticatable
     {
         return [
             'pin' => 'hashed',
+            'teacher_note_updated_at' => 'datetime',
         ];
     }
 
@@ -56,6 +58,28 @@ class Student extends Authenticatable
     public function quizAttempts(): HasMany
     {
         return $this->hasMany(QuizAttempt::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function teacherReviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'teacher_note_by');
+    }
+
+    /** Weekly homework module assigned by a teacher. */
+    public function assignedCategory(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'assigned_category_id');
+    }
+
+    /** True when the given adult created this profile (may delete it). */
+    public function isCreatedBy(User $user): bool
+    {
+        return (int) $this->created_by === (int) $user->id;
     }
 
     public function avatarEmoji(): string

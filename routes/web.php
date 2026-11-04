@@ -8,6 +8,7 @@ use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LearningController;
 use App\Http\Controllers\QuizController;
+use App\Http\Controllers\TtsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -58,17 +59,30 @@ Route::middleware('auth:student')->name('quiz.')->prefix('quiz')->group(function
 // ==========================================
 // Parent & Teacher Portal (Home-School Collaboration)
 // ==========================================
-Route::middleware(['auth:web', 'role:parent,teacher'])->name('guardian.')->prefix('guardian')->group(function () {
+// Waiting page for teachers not yet approved by Admin
+Route::middleware(['auth:web', 'role:parent,teacher'])->get('/guardian/pending', [GuardianController::class, 'pending'])->name('guardian.pending');
+
+Route::middleware(['auth:web', 'role:parent,teacher', 'approved'])->name('guardian.')->prefix('guardian')->group(function () {
     Route::get('/dashboard', [GuardianController::class, 'dashboard'])->name('dashboard');
     Route::post('/children', [GuardianController::class, 'storeChild'])->name('child.store');
     Route::post('/link', [GuardianController::class, 'linkChild'])->name('child.link');
     Route::get('/child/{student}', [GuardianController::class, 'showChild'])->name('child.show');
     Route::post('/child/{student}/start', [GuardianController::class, 'startLearning'])->name('child.start');
+    Route::put('/child/{student}/profile', [GuardianController::class, 'updateChild'])->name('child.update');
     Route::delete('/child/{student}', [GuardianController::class, 'unlinkChild'])->name('child.unlink');
+    Route::delete('/child/{student}/destroy', [GuardianController::class, 'destroyChild'])->name('child.destroy');
+
+    // Teacher-only: feedback note + weekly homework module
+    Route::post('/child/{student}/teacher-note', [GuardianController::class, 'saveTeacherNote'])
+        ->middleware('role:teacher')
+        ->name('child.note');
 });
 
 // AI Dataset Endpoint (Accessible for student learning & camera recognition)
 Route::get('/ai/dataset', [AiTrainingController::class, 'dataset'])->name('ai.public_dataset');
+
+// Bahasa Melayu TTS Audio Endpoint (ElevenLabs + Disk Cache + Malay Fallback)
+Route::get('/tts', [TtsController::class, 'speak'])->name('tts.speak');
 
 // ==========================================
 // Admin Control Center (Protected by admin role)
@@ -77,6 +91,8 @@ Route::middleware(['auth:web', 'role:admin'])->name('admin.')->prefix('admin')->
     Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/users', [AdminController::class, 'users'])->name('users');
     Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('users.delete');
+    Route::patch('/users/{user}/approve', [AdminController::class, 'approveUser'])->name('users.approve');
+    Route::patch('/users/{user}/reject', [AdminController::class, 'rejectUser'])->name('users.reject');
     Route::get('/students', [AdminController::class, 'students'])->name('students');
     Route::delete('/students/{student}', [AdminController::class, 'deleteStudent'])->name('students.delete');
     Route::get('/signs', [AdminController::class, 'signs'])->name('signs');

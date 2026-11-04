@@ -57,6 +57,7 @@
                         <div class="card" style="text-align: center; padding: 1rem; border: 2px solid var(--border-light);" id="role-box-parent">
                             <div style="font-size: 1.8rem;">👨‍👩‍👧</div>
                             <div style="font-weight: 800; margin-top: 0.3rem;">Ibu Bapa / Penjaga</div>
+                            <div style="font-size: 0.75rem; color: var(--success); font-weight: 700; margin-top: 0.2rem;">✔ Aktif serta-merta</div>
                         </div>
                     </label>
 
@@ -65,6 +66,7 @@
                         <div class="card" style="text-align: center; padding: 1rem; border: 2px solid var(--border-light);" id="role-box-teacher">
                             <div style="font-size: 1.8rem;">👩‍🏫</div>
                             <div style="font-weight: 800; margin-top: 0.3rem;">Guru Sekolah</div>
+                            <div style="font-size: 0.75rem; color: #d46b08; font-weight: 700; margin-top: 0.2rem;">⏳ Perlu kelulusan Admin</div>
                         </div>
                     </label>
                 </div>

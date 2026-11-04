@@ -16,13 +16,46 @@
         </div>
     </div>
 
-    <div style="text-align: right; background: rgba(255,255,255,0.2); padding: 1rem 1.5rem; border-radius: var(--radius-md); backdrop-filter: blur(8px);">
-        <div style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase;">Bintang Terkumpul</div>
-        <div style="font-size: 2.5rem; font-weight: 900; color: #ffeaa7; font-family: var(--font-display);">
-            ⭐ {{ $student->stars }}
+    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+        <button type="button" onclick="window.Kiko?.randomCheer(true)" class="btn" style="background: rgba(255,255,255,0.95); color: #6c5ce7; font-weight: 900; border-radius: 999px; padding: 0.7rem 1.25rem; box-shadow: 0 6px 16px rgba(0,0,0,0.12);">
+            🐾 Semangat Kiko!
+        </button>
+
+        <div style="text-align: right; background: rgba(255,255,255,0.2); padding: 1rem 1.5rem; border-radius: var(--radius-md); backdrop-filter: blur(8px);">
+            <div style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase;">Bintang Terkumpul</div>
+            <div style="font-size: 2.5rem; font-weight: 900; color: #ffeaa7; font-family: var(--font-display);">
+                ⭐ {{ $student->stars }}
+            </div>
         </div>
     </div>
 </div>
+
+{{-- TEACHER HOMEWORK BANNER (IF ASSIGNED) --}}
+@if($student->assignedCategory || $student->teacher_note)
+<div class="card" style="background: linear-gradient(135deg, #0984e3 0%, #00cec9 100%); color: #fff; margin-bottom: 1.5rem; padding: 1.4rem 1.8rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="font-size: 2.8rem;">📌</div>
+        <div>
+            <div style="font-size: 0.8rem; font-weight: 900; text-transform: uppercase; opacity: 0.9;">
+                Tugasan daripada {{ $student->teacherReviewer->name ?? 'Cikgu' }}
+            </div>
+            @if($student->assignedCategory)
+                <h2 style="font-size: 1.4rem; color: #fff; margin: 0.1rem 0;">
+                    Jom Latih Modul: {{ $student->assignedCategory->icon }} {{ $student->assignedCategory->name }}!
+                </h2>
+            @endif
+            @if($student->teacher_note)
+                <p style="opacity: 0.95; font-size: 0.92rem; margin: 0.2rem 0 0;">“{{ $student->teacher_note }}”</p>
+            @endif
+        </div>
+    </div>
+    @if($student->assignedCategory)
+        <a href="{{ route('learn.category', $student->assignedCategory) }}" class="btn" style="background: #fff; color: #0984e3; font-weight: 900;">
+            <i class="fa-solid fa-star"></i> Buka Tugasan Cikgu
+        </a>
+    @endif
+</div>
+@endif
 
 {{-- QUIZ CHALLENGE BANNER --}}
 <div class="card card-hover" style="background: linear-gradient(135deg, #ffa502 0%, #ff7675 100%); color: #fff; margin-bottom: 2.5rem; padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
@@ -47,7 +80,13 @@
 
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
         @foreach($categories as $cat)
-            <div class="card card-hover" style="border-top: 6px solid {{ $cat->color }}; display: flex; flex-direction: column;">
+            @php $isAssigned = (int) $student->assigned_category_id === (int) $cat->id; @endphp
+            <div class="card card-hover" style="border-top: 6px solid {{ $cat->color }}; display: flex; flex-direction: column; position: relative; {{ $isAssigned ? 'box-shadow: 0 0 0 3px #0984e3, var(--shadow-md);' : '' }}">
+                @if($isAssigned)
+                    <div style="position: absolute; top: -12px; right: 14px; background: #0984e3; color: #fff; font-size: 0.75rem; font-weight: 900; padding: 0.2rem 0.65rem; border-radius: 999px;">
+                        📌 Tugasan Cikgu!
+                    </div>
+                @endif
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.8rem;">
                     <div style="font-size: 2.8rem; background: #f8fafc; width: 60px; height: 60px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;">
                         {{ $cat->icon ?? '📖' }}

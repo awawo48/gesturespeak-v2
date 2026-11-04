@@ -89,9 +89,16 @@
                             <i class="fa-solid fa-robot"></i> AI Studio
                         </a>
                     @else
-                        <a href="{{ route('guardian.dashboard') }}" class="nav-item {{ request()->routeIs('guardian.*') ? 'active' : '' }}">
-                            <i class="fa-solid fa-chalkboard-user"></i> Dashboard
-                        </a>
+                        @if($currentUser->isApproved())
+                            <a href="{{ route('guardian.dashboard') }}" class="nav-item {{ request()->routeIs('guardian.*') ? 'active' : '' }}">
+                                <i class="fa-solid {{ $currentUser->isTeacher() ? 'fa-chalkboard-user' : 'fa-house-user' }}"></i>
+                                {{ $currentUser->isTeacher() ? 'Portal Kelas' : 'Portal Ibu Bapa' }}
+                            </a>
+                        @else
+                            <a href="{{ route('guardian.pending') }}" class="nav-item active">
+                                <i class="fa-solid fa-hourglass-half"></i> Status Kelulusan
+                            </a>
+                        @endif
                     @endif
 
                     <div class="nav-item" style="background: #f1f2f6;">
@@ -153,6 +160,10 @@
         <p><strong>GestureSpeak V2</strong> &bull; Sistem Pembelajaran Bahasa Isyarat Malaysia (BIM) Interaktif Kanak-kanak</p>
         <p style="margin-top: 0.3rem; font-size: 0.8rem; color: #a4b0be;">Dikuasakan oleh MediaPipe AI & Laravel &bull; Hak Cipta Terpelihara</p>
     </footer>
+
+    @if(request()->routeIs('learn.*', 'quiz.*', 'student.*'))
+        @include('partials.kiko-mascot')
+    @endif
 
     @stack('scripts')
 </body>
