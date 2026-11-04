@@ -21,6 +21,7 @@ class LearningController extends Controller
     public function hub(): View
     {
         $student = Auth::guard('student')->user();
+        $student->load(['assignedCategory', 'teacherReviewer']);
         $summary = $student->progressSummary();
 
         $categories = Category::withCount('signs')

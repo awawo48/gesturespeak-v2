@@ -534,18 +534,61 @@
             }
         }
 
-        function speakKiko(text) {
-            if (!('speechSynthesis' in window) || !text) return;
-            const clean = String(text).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim();
-            if (!clean) return;
+        const ttsBaseUrl = @json(route('tts.speak'));
+        const kikoAudio = new Audio();
+        kikoAudio.preload = 'auto';
+
+        function setSpeakingUi(active) {
+            if (!btnSpeak) return;
+            btnSpeak.style.background = active ? '#6c5ce7' : '';
+            btnSpeak.style.color = active ? '#ffffff' : '';
+        }
+
+        kikoAudio.addEventListener('playing', () => setSpeakingUi(true));
+        kikoAudio.addEventListener('ended', () => setSpeakingUi(false));
+        kikoAudio.addEventListener('pause', () => setSpeakingUi(false));
+
+        function fallbackBrowserSpeak(clean) {
+            setSpeakingUi(false);
+            if (!('speechSynthesis' in window) || !clean) return;
             window.speechSynthesis.cancel();
             const utter = new SpeechSynthesisUtterance(clean);
+            utter.lang = 'ms-MY';
             utter.rate = 0.96;
             utter.pitch = 1.25;
             const voices = window.speechSynthesis.getVoices();
             const myVoice = voices.find(v => v.lang.startsWith('ms') || v.lang.startsWith('id') || v.lang.includes('Malay'));
             if (myVoice) utter.voice = myVoice;
             window.speechSynthesis.speak(utter);
+        }
+
+        function speakKiko(text) {
+            if (!text) return;
+            const clean = String(text).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '').trim();
+            if (!clean) return;
+
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+
+            try {
+                kikoAudio.pause();
+            } catch {}
+
+            setSpeakingUi(true);
+            const url = `${ttsBaseUrl}?text=${encodeURIComponent(clean)}`;
+            kikoAudio.onerror = () => fallbackBrowserSpeak(clean);
+            kikoAudio.src = url;
+
+            // Calling play() synchronously inside the click stack preserves browser autoplay permission
+            const playPromise = kikoAudio.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch(err => {
+                    if (err && err.name === 'AbortError') return;
+                    console.warn('Audio playback notice, using speechSynthesis fallback:', err);
+                    fallbackBrowserSpeak(clean);
+                });
+            }
         }
 
         function say(message, mood = 'happy', opts = {}) {
@@ -612,14 +655,15 @@
             if (widget.classList.contains('minimized')) {
                 setMinimized(false);
                 spawnParticles(['🐾', '✨', '⭐'], 6);
+                speakKiko(textEl.textContent);
             } else {
-                randomCheer(false);
+                randomCheer(true);
             }
         });
 
         btnCheer?.addEventListener('click', e => {
             e.stopPropagation();
-            randomCheer(false);
+            randomCheer(true);
         });
 
         btnSpeak?.addEventListener('click', e => {

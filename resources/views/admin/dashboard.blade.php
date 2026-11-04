@@ -17,6 +17,19 @@
     </a>
 </div>
 
+{{-- PENDING TEACHER APPROVALS --}}
+@if(($stats['pending_teachers'] ?? 0) > 0)
+    <div class="alert" style="background: #fff7e6; border: 1px solid #ffd591; color: #ad6800; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1.5rem;">
+        <div>
+            <i class="fa-solid fa-chalkboard-user"></i>
+            <strong>{{ $stats['pending_teachers'] }} akaun guru</strong> baharu menunggu kelulusan.
+        </div>
+        <a href="{{ route('admin.users', ['role' => 'teacher', 'status' => 'pending']) }}" class="btn btn-sm" style="background: #fa8c16; color: #fff;">
+            <i class="fa-solid fa-user-check"></i> Semak &amp; Luluskan
+        </a>
+    </div>
+@endif
+
 {{-- METRICS SUMMARY CARDS --}}
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; margin-bottom: 2.5rem;">
     <div class="card" style="border-left: 5px solid var(--primary);">

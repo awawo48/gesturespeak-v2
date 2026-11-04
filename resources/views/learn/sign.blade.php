@@ -1157,22 +1157,18 @@
 </script>
 
 <script>
-    // Web Speech API (Text-to-Speech)
+    // Text-to-Speech (Uses ElevenLabs Kiko voice with browser Web Speech fallback)
     function speakWord(text) {
-        if (!('speechSynthesis' in window)) {
-            console.log("Web Speech API tidak disokong.");
+        if (window.Kiko && typeof window.Kiko.speak === 'function') {
+            window.Kiko.speak(text);
             return;
         }
+        if (!('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'ms-MY';
         utter.rate = 0.9;
         utter.pitch = 1.1;
-
-        // Try to pick Malay or Indonesian voice if installed
-        const voices = window.speechSynthesis.getVoices();
-        const myVoice = voices.find(v => v.lang.startsWith('ms') || v.lang.startsWith('id') || v.lang.includes('Malay'));
-        if (myVoice) utter.voice = myVoice;
-
         window.speechSynthesis.speak(utter);
     }
 </script>

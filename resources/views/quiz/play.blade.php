@@ -261,9 +261,14 @@
     }
 
     function speak(text) {
+        if (window.Kiko && typeof window.Kiko.speak === 'function') {
+            window.Kiko.speak(text);
+            return;
+        }
         if (!('speechSynthesis' in window)) return;
         window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'ms-MY';
         utter.rate = 0.95;
         window.speechSynthesis.speak(utter);
     }

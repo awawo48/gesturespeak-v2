@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -14,26 +15,80 @@ use Illuminate\View\View;
 /**
  * Parent / Teacher dashboard: create children, link a child by Student Code,
  * view progress reports and start Learning Mode.
+ *
+ * Role differences:
+ * - Teacher: class analytics, search/sort, writes feedback notes & assigns homework modules.
+ * - Parent : sees teacher notes/homework, manages child profile & resets PIN.
+ * - Only the creator of a child profile (or Admin) may delete it permanently.
  */
 class GuardianController extends Controller
 {
+    /** Waiting page for teachers not yet approved by Admin. */
+    public function pending(Request $request): View|RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->isApproved()) {
+            return redirect()->route('guardian.dashboard');
+        }
+
+        return view('guardian.pending', ['user' => $user]);
+    }
+
     public function dashboard(Request $request): View
     {
-        $children = $request->user()->students()
+        $user = $request->user();
+        $search = trim((string) $request->input('search', ''));
+        $sort = $request->input('sort', 'name');
+
+        $children = $user->students()
+            ->with(['guardians:id,name,role', 'assignedCategory:id,name,icon,color', 'teacherReviewer:id,name'])
             ->withCount(['progress as mastered_count' => fn ($q) => $q->where('mastered', true)])
             ->withCount('quizAttempts')
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where(function ($qq) use ($search) {
+                    $qq->where('name', 'like', "%{$search}%")
+                        ->orWhere('student_code', 'like', "%{$search}%");
+                });
+            })
             ->orderBy('name')
             ->get()
             ->map(function (Student $child) {
                 $child->summary = $child->progressSummary();
                 $child->last_active = $child->progress()->max('updated_at');
+                $child->has_parent = $child->guardians->contains(fn ($g) => $g->role === User::ROLE_PARENT);
+                $child->has_teacher = $child->guardians->contains(fn ($g) => $g->role === User::ROLE_TEACHER);
 
                 return $child;
             });
 
+        $children = match ($sort) {
+            'stars' => $children->sortByDesc('stars')->values(),
+            'progress' => $children->sortByDesc(fn ($c) => $c->summary['overall'])->values(),
+            'progress_low' => $children->sortBy(fn ($c) => $c->summary['overall'])->values(),
+            default => $children,
+        };
+
+        // Class analytics (teacher view)
+        $classStats = null;
+        if ($user->isTeacher()) {
+            $count = $children->count();
+            $top = $children->sortByDesc(fn ($c) => $c->summary['overall'])->first();
+            $classStats = [
+                'total' => $count,
+                'average' => $count ? (int) round($children->avg(fn ($c) => $c->summary['overall'])) : 0,
+                'top' => $top,
+                'needs_help' => $children->filter(fn ($c) => $c->summary['overall'] < 30)->count(),
+                'without_parent' => $children->where('has_parent', false)->count(),
+            ];
+        }
+
         return view('guardian.dashboard', [
             'children' => $children,
             'avatars' => Student::AVATARS,
+            'classStats' => $classStats,
+            'search' => $search,
+            'sort' => $sort,
         ]);
     }
 
@@ -56,8 +111,10 @@ class GuardianController extends Controller
 
         $child->guardians()->attach($user->id, ['relationship' => $user->role]);
 
+        $shareWith = $user->isTeacher() ? 'ibu bapa' : 'guru';
+
         return redirect()->route('guardian.dashboard')
-            ->with('success', "{$child->name} was added! Student Code: {$child->student_code}. Share this code with the ".($user->isTeacher() ? 'parent' : 'teacher').' so they can follow progress too.');
+            ->with('success', "{$child->name} berjaya ditambah! Kod Murid: {$child->student_code}. Kongsi kod ini dengan {$shareWith} supaya mereka boleh pantau kemajuan bersama.");
     }
 
     public function linkChild(Request $request): RedirectResponse
@@ -70,26 +127,26 @@ class GuardianController extends Controller
         $child = Student::where('student_code', $code)->first();
 
         if (! $child) {
-            return back()->withErrors(['student_code' => "No child found with code {$code}."])->withInput();
+            return back()->withErrors(['student_code' => "Tiada murid dijumpai dengan kod {$code}."])->withInput();
         }
 
         $user = $request->user();
 
         if ($child->guardians()->whereKey($user->id)->exists()) {
-            return back()->with('success', "{$child->name} is already linked to your account.");
+            return back()->with('success', "{$child->name} sudah dipautkan dengan akaun anda.");
         }
 
         $child->guardians()->attach($user->id, ['relationship' => $user->role]);
 
         return redirect()->route('guardian.dashboard')
-            ->with('success', "{$child->name} is now linked to your account. You will see the same progress as other guardians.");
+            ->with('success', "{$child->name} kini dipautkan dengan akaun anda. Anda akan melihat kemajuan yang sama seperti penjaga lain.");
     }
 
     public function showChild(Request $request, Student $student): View
     {
         $this->authorizeGuardian($request->user(), $student);
 
-        $student->load(['guardians']);
+        $student->load(['guardians', 'assignedCategory', 'teacherReviewer', 'creator']);
 
         $attempts = $student->quizAttempts()->with('category')->latest()->take(20)->get();
 
@@ -104,13 +161,16 @@ class GuardianController extends Controller
             ->get();
 
         // Activity per day for the last 14 days (chart)
-        $activity = collect(range(13, 0))->mapWithKeys(fn ($d) => [now()->subDays($d)->format('Y-m-d') => 0]);
+        $activity = collect(range(13, 0))
+            ->mapWithKeys(fn ($d) => [now()->subDays($d)->format('Y-m-d') => 0])
+            ->all();
+
         $student->progress()
             ->where('updated_at', '>=', now()->subDays(14)->startOfDay())
             ->get(['updated_at'])
             ->each(function ($p) use (&$activity) {
                 $key = $p->updated_at->format('Y-m-d');
-                if ($activity->has($key)) {
+                if (array_key_exists($key, $activity)) {
                     $activity[$key]++;
                 }
             });
@@ -122,6 +182,9 @@ class GuardianController extends Controller
             'recent' => $recent,
             'needsPractice' => $needsPractice,
             'activity' => $activity,
+            'categories' => Category::orderBy('sort_order')->get(['id', 'name', 'icon']),
+            'avatars' => Student::AVATARS,
+            'isCreator' => $student->isCreatedBy($request->user()),
         ]);
     }
 
@@ -135,22 +198,87 @@ class GuardianController extends Controller
         return redirect()->route('learn.hub');
     }
 
+    /** Update profile / reset PIN: creator of the profile or any linked parent. */
+    public function updateChild(Request $request, Student $student): RedirectResponse
+    {
+        $user = $request->user();
+        $this->authorizeGuardian($user, $student);
+
+        abort_unless(
+            $student->isCreatedBy($user) || $user->isParent(),
+            403,
+            'Hanya pencipta profil atau ibu bapa boleh mengemas kini profil murid.'
+        );
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:60'],
+            'age' => ['nullable', 'integer', 'min:2', 'max:18'],
+            'avatar' => ['required', Rule::in(array_keys(Student::AVATARS))],
+            'pin' => ['nullable', 'digits:4'],
+        ]);
+
+        if (empty($data['pin'])) {
+            unset($data['pin']);
+        }
+
+        $student->update($data);
+
+        return back()->with('success', "Profil {$student->name} berjaya dikemas kini".(isset($data['pin']) ? ' dan PIN baharu telah ditetapkan.' : '.'));
+    }
+
+    /** Teacher-only: write feedback note and assign weekly homework module. */
+    public function saveTeacherNote(Request $request, Student $student): RedirectResponse
+    {
+        $user = $request->user();
+        $this->authorizeGuardian($user, $student);
+
+        $data = $request->validate([
+            'teacher_note' => ['nullable', 'string', 'max:1000'],
+            'assigned_category_id' => ['nullable', 'integer', 'exists:categories,id'],
+        ]);
+
+        $student->update([
+            'teacher_note' => $data['teacher_note'] ?: null,
+            'assigned_category_id' => $data['assigned_category_id'] ?? null,
+            'teacher_note_by' => $user->id,
+            'teacher_note_updated_at' => now(),
+        ]);
+
+        return back()->with('success', "Ulasan dan tugasan untuk {$student->name} telah disimpan. Ibu bapa boleh melihatnya sekarang.");
+    }
+
+    /** Remove the link between this adult and the child (profile is kept). */
     public function unlinkChild(Request $request, Student $student): RedirectResponse
     {
-        $this->authorizeGuardian($request->user(), $student);
+        $user = $request->user();
+        $this->authorizeGuardian($user, $student);
 
-        $student->guardians()->detach($request->user()->id);
+        $student->guardians()->detach($user->id);
 
-        // Remove the child completely if nobody is linked anymore
+        // Orphaned profiles can no longer be reached by anyone, so clean them up
         if (! $student->guardians()->exists()) {
             $student->delete();
         }
 
-        return redirect()->route('guardian.dashboard')->with('success', "{$student->name} was removed from your account.");
+        return redirect()->route('guardian.dashboard')->with('success', "{$student->name} telah dinyahpaut daripada akaun anda.");
+    }
+
+    /** Permanently delete a child profile: creator only. */
+    public function destroyChild(Request $request, Student $student): RedirectResponse
+    {
+        $user = $request->user();
+        $this->authorizeGuardian($user, $student);
+
+        abort_unless($student->isCreatedBy($user), 403, 'Hanya pencipta profil murid boleh memadam profil ini.');
+
+        $name = $student->name;
+        $student->delete();
+
+        return redirect()->route('guardian.dashboard')->with('success', "Profil {$name} telah dipadam sepenuhnya.");
     }
 
     private function authorizeGuardian(User $user, Student $student): void
     {
-        abort_unless($student->guardians()->whereKey($user->id)->exists(), 403, 'This child is not linked to your account.');
+        abort_unless($student->guardians()->whereKey($user->id)->exists(), 403, 'Murid ini tidak dipautkan dengan akaun anda.');
     }
 }
