@@ -100,25 +100,30 @@
 @endpush
 
 @section('content')
-{{-- TOP NAVIGATION BAR --}}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.8rem;">
-    <a href="{{ route('learn.category', $category) }}" class="btn btn-outline btn-sm">
-        <i class="fa-solid fa-arrow-left"></i> Kembali ke Modul {{ $category->name }}
+{{-- TOP NAVIGATION BAR (Fitts's Law >=48px touch targets + Visual Progress) --}}
+<div class="top-action-bar">
+    <a href="{{ route('learn.category', $category) }}" class="btn btn-outline">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Modul {{ $category->name }}
     </a>
 
-    <div style="font-weight: 800; color: var(--text-muted); font-size: 0.95rem;">
-        Isyarat {{ $currentIndex }} daripada {{ $totalSigns }}
+    <div class="step-progress-wrap">
+        <div style="font-weight: 800; color: var(--text-muted); font-size: 0.92rem; margin-bottom: 0.3rem;">
+            Isyarat {{ $currentIndex }} daripada {{ $totalSigns }}
+        </div>
+        <div class="progress-track" style="height: 8px;">
+            <div class="progress-fill" style="width: {{ $totalSigns > 0 ? round(($currentIndex / $totalSigns) * 100) : 0 }}%;"></div>
+        </div>
     </div>
 
-    <div style="display: flex; gap: 0.5rem;">
+    <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
         @if($prevSign)
-            <a href="{{ route('learn.sign', [$category, $prevSign]) }}" class="btn btn-outline btn-sm">
-                <i class="fa-solid fa-chevron-left"></i> Sebelum
+            <a href="{{ route('learn.sign', [$category, $prevSign]) }}" class="btn btn-outline">
+                <i class="fa-solid fa-chevron-left" aria-hidden="true"></i> Sebelum
             </a>
         @endif
         @if($nextSign)
-            <a href="{{ route('learn.sign', [$category, $nextSign]) }}" class="btn btn-primary btn-sm">
-                Seterusnya <i class="fa-solid fa-chevron-right"></i>
+            <a href="{{ route('learn.sign', [$category, $nextSign]) }}" class="btn btn-primary">
+                Seterusnya <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
             </a>
         @endif
     </div>
@@ -128,24 +133,24 @@
 
     {{-- LEFT COLUMN: DEMO & INSTRUCTIONS --}}
     <div>
-        <div class="card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+        <div class="card" style="padding: var(--space-5); margin-bottom: var(--space-5);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3);">
                 <div>
                     <h1 style="font-size: 2.8rem; font-family: var(--font-display); color: var(--primary); margin: 0; line-height: 1;">
                         {{ $sign->word }}
                     </h1>
-                    <div style="font-size: 1.1rem; color: var(--text-muted); margin-top: 0.3rem;">
+                    <div style="font-size: 1.1rem; color: var(--text-muted); margin-top: 0.35rem; font-weight: 700;">
                         {{ $sign->meaning_en ?? $sign->word }}
                     </div>
                 </div>
 
-                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem;">
-                    <button type="button" class="btn btn-accent btn-sm" onclick="speakWord('{{ $sign->word }}')" title="Dengar sebutan audio perkataan ini">
-                        <i class="fa-solid fa-volume-high"></i> Sebut Perkataan
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                    <button type="button" class="btn btn-accent" onclick="speakWord('{{ $sign->word }}')" title="Dengar sebutan audio perkataan ini">
+                        <i class="fa-solid fa-volume-high" aria-hidden="true"></i> Sebut Perkataan
                     </button>
                     @if($progress->mastered)
-                        <span class="star-pill" style="font-size: 0.85rem; padding: 0.2rem 0.6rem;">
-                            ⭐ Dikuasai!
+                        <span class="star-pill">
+                            ✔ ⭐ Dikuasai!
                         </span>
                     @endif
                 </div>
@@ -181,9 +186,15 @@
     <div>
         <div class="card" style="padding: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-                <h2 style="font-size: 1.4rem; margin: 0;">
-                    <i class="fa-solid fa-camera" style="color: var(--secondary);"></i> Praktis Kamera AI
-                </h2>
+                <div>
+                    <h2 style="font-size: 1.4rem; margin: 0; display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
+                        <i class="fa-solid {{ $sign->is_static ? 'fa-hand' : 'fa-film' }}" style="color: {{ $sign->is_static ? 'var(--primary)' : '#0284c7' }};"></i>
+                        <span>{{ $sign->is_static ? 'Kamera AI Statik (Pegun)' : 'Kamera AI Dinamik (Gerakan)' }}</span>
+                    </h2>
+                    <div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 700; margin-top: 0.15rem;">
+                        {{ $sign->is_static ? 'Mod KNN Pegun: Bentuk jari dinilai apabila tangan dipegang diam.' : 'Mod Auto Mula–Gerak–Tamat: Lakukan gerakan lalu berhenti sekejap (2 Tangan + Bahu).' }}
+                    </div>
+                </div>
                 <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
                     <button type="button" id="btn-toggle-face" class="face-toggle-btn active" title="Aktifkan/Matikan Pengesan Wajah & Ekspresi BIM untuk ketepatan lebih tinggi">
                         <i class="fa-solid fa-face-smile"></i> AI Wajah
@@ -197,12 +208,12 @@
             @if($sign->label === 'J')
                 <div style="background: rgba(108, 92, 231, 0.1); border: 1px solid rgba(108, 92, 231, 0.3); padding: 0.6rem 1rem; border-radius: var(--radius-md); margin-bottom: 0.8rem; font-size: 0.85rem; color: #5041c9; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    <span>Panduan Gerakan J: Angkat kelengkeng tegak, kemudian lukis bentuk cangkuk "J" di udara! Jejak neon akan muncul di skrin.</span>
+                    <span>Panduan Gerakan J: Angkat kelengkeng tegak, lukis cangkuk "J" di udara lalu berhenti sekejap!</span>
                 </div>
             @elseif(!$sign->is_static)
-                <div style="background: rgba(9, 132, 227, 0.1); border: 1px solid rgba(9, 132, 227, 0.3); padding: 0.6rem 1rem; border-radius: var(--radius-md); margin-bottom: 0.8rem; font-size: 0.85rem; color: #0984e3; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                <div id="dynamic-mirror-banner" style="background: rgba(9, 132, 227, 0.1); border: 1px solid rgba(9, 132, 227, 0.3); padding: 0.6rem 1rem; border-radius: var(--radius-md); margin-bottom: 0.8rem; font-size: 0.85rem; color: #0984e3; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fa-solid fa-film"></i>
-                    <span>Isyarat Pergerakan (Dinamik): Buka kamera AI dan tiru pergerakan tangan <strong>{{ $sign->word }}</strong> mengikut video panduan!</span>
+                    <span id="dynamic-banner-text">Isyarat Dinamik: Tiru gerakan tangan <strong>{{ $sign->word }}</strong> mengikut video panduan lalu berhenti sekejap.</span>
                 </div>
             @endif
 
@@ -214,15 +225,21 @@
                     <span>😊 Wajah: Memuat...</span>
                 </div>
 
+                @if(!$sign->is_static)
+                    <div id="dynamic-mode-pill" class="face-hud-pill" style="left: auto; right: 10px; background: rgba(2, 132, 199, 0.88); display: inline-flex;">
+                        <span>🎬 Dinamik: Memuat AI...</span>
+                    </div>
+                @endif
+
                 <div id="camera-placeholder" style="text-align: center; padding: 2rem; color: #fff; position: relative; z-index: 2;">
                     <div style="font-size: 3rem; margin-bottom: 0.5rem; color: var(--secondary);">📷</div>
                     <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 0.4rem;">Sedia untuk berlatih?</div>
-                    <p style="font-size: 0.85rem; color: #a4b0be; max-width: 280px; margin: 0 auto 1rem;">
+                    <p style="font-size: 0.9rem; color: #e2e8f0; max-width: 290px; margin: 0 auto 1.1rem;">
                         Tekan butang di bawah untuk hidupkan kamera dan tunjukkan isyarat <strong>{{ $sign->word }}</strong>.
                     </p>
-                    <div id="camera-error" style="display: none; background: rgba(220, 38, 38, 0.9); color: #fff; font-size: 0.8rem; font-weight: 700; padding: 0.6rem 0.9rem; border-radius: var(--radius-sm); max-width: 320px; margin: 0 auto 1rem; line-height: 1.4;"></div>
-                    <button type="button" class="btn btn-secondary" id="btn-start-camera">
-                        <i class="fa-solid fa-video"></i> Buka Kamera AI
+                    <div id="camera-error" style="display: none; background: rgba(220, 38, 38, 0.9); color: #fff; font-size: 0.85rem; font-weight: 700; padding: 0.6rem 0.9rem; border-radius: var(--radius-sm); max-width: 320px; margin: 0 auto 1rem; line-height: 1.4;"></div>
+                    <button type="button" class="btn btn-secondary btn-kid" id="btn-start-camera">
+                        <i class="fa-solid fa-video" aria-hidden="true"></i> Buka Kamera AI
                     </button>
                 </div>
 
@@ -232,29 +249,29 @@
             </div>
 
             {{-- CAMERA CONTROLS & CONFIDENCE METER --}}
-            <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                <div style="flex: 1; margin-right: 1rem;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 800; margin-bottom: 0.2rem;">
+            <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; gap: var(--space-3);">
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 800; margin-bottom: 0.25rem;">
                         <span>Ketepatan Padanan AI</span>
                         <span id="confidence-pct">0%</span>
                     </div>
-                    <div class="progress-track" style="height: 8px;">
+                    <div class="progress-track" style="height: 10px;">
                         <div id="confidence-bar" class="progress-fill" style="width: 0%; background: var(--secondary);"></div>
                     </div>
                 </div>
 
-                <button type="button" id="btn-stop-camera" class="btn btn-outline btn-sm" style="display: none;">
-                    <i class="fa-solid fa-stop"></i> Tutup
+                <button type="button" id="btn-stop-camera" class="btn btn-outline" style="display: none;">
+                    <i class="fa-solid fa-stop" aria-hidden="true"></i> Tutup
                 </button>
             </div>
 
             {{-- MANUAL FALLBACK BUTTON --}}
             <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--border-light); text-align: center;">
-                <span style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.88rem; color: var(--text-muted); display: block; margin-bottom: 0.6rem; font-weight: 700;">
                     Tiada kamera atau mahu tandakan selesai secara manual?
                 </span>
-                <button type="button" class="btn btn-outline btn-sm" onclick="manualComplete()">
-                    <i class="fa-solid fa-check"></i> Tandakan Isyarat Ini Sebagai Selesai
+                <button type="button" class="btn btn-outline" onclick="manualComplete()">
+                    <i class="fa-solid fa-check" aria-hidden="true"></i> Tandakan Isyarat Ini Sebagai Selesai
                 </button>
             </div>
 
@@ -271,22 +288,32 @@
         isHandOnlyLabel,
         normaliseLandmarks,
         extractFaceContext,
+        extractPoseContext,
+        selectHandsOrder,
         buildFeatureVector,
+        buildMultimodalVector,
         drawFaceAnchors,
+        drawPoseAnchors,
+        getEffectiveFaceRule,
         evaluateFaceSignBoost,
         isPinkyUpShape,
+        isIndexPointingShape,
         KnnClassifier,
         PredictionSmoother,
         HandMotionTracker,
         SequenceClassifier,
-        SequenceBuffer
+        SequenceBuffer,
+        MotionSegmenter,
+        DynamicGestureEngine
     } from "{{ asset('js/gesture-ai.js') }}";
 
     let handLandmarker = null;
     let faceLandmarker = null;
+    let poseLandmarker = null;
     let visionRuntimePromise = null;
     let initPromise = null;
     let faceInitPromise = null;
+    let poseInitPromise = null;
     let modelLoadFailed = false;
     let runningMode = "VIDEO";
     let webcamRunning = false;
@@ -296,9 +323,13 @@
     let latestFaceLandmarks = null;
     let latestFaceBlendshapes = null;
     let latestFaceContext = null;
+    let latestPoseLandmarks = null;
+    let latestPoseContext = null;
     let faceFrameTick = 0;
+    let auxFrameTick = 0;
     let lastHandTs = -1;
     let lastFaceTs = -1;
+    let lastPoseTs = -1;
 
     const video = document.getElementById("webcam");
     const canvasElement = document.getElementById("output_canvas");
@@ -309,6 +340,8 @@
     const btnStop = document.getElementById("btn-stop-camera");
     const btnToggleFace = document.getElementById("btn-toggle-face");
     const faceHudPill = document.getElementById("face-hud-pill");
+    const dynamicModePill = document.getElementById("dynamic-mode-pill");
+    const dynamicBannerText = document.getElementById("dynamic-banner-text");
     const feedbackOverlay = document.getElementById("feedback-overlay");
     const feedbackText = document.getElementById("feedback-text");
     const confidenceBar = document.getElementById("confidence-bar");
@@ -320,13 +353,45 @@
     const isStaticSign = {{ $sign->is_static ? 'true' : 'false' }};
     let isMastered = {{ $progress->mastered ? 'true' : 'false' }};
     let consecutiveMatches = 0;
+    let lastDynamicMatchTime = 0;
+    let lastDynamicConf = 0;
+    let lastDynFeedbackUntil = 0;
 
     const knn = new KnnClassifier(5);
     const smoother = new PredictionSmoother(5);
     const motionTracker = new HandMotionTracker(45);
     const seqClassifier = new SequenceClassifier(30);
     const seqBuffer = new SequenceBuffer(45);
+    const segmenter = new MotionSegmenter();
+    const dynamicEngine = new DynamicGestureEngine();
     let mlReady = false;
+    let dynamicEvalModeLabel = "Menyemak mod AI...";
+
+    function refreshDynamicModeIndicators() {
+        if (isStaticSign) return;
+        const hasDtw = dynamicEngine.templateLabels.map(l => String(l).trim().toUpperCase()).includes(targetSign);
+        const effRule = getEffectiveFaceRule(targetSign);
+
+        if (targetSign === "J" || targetSign === "Z") {
+            dynamicEvalModeLabel = `✨ Penjejak ${targetSign}`;
+        } else if (hasDtw) {
+            dynamicEvalModeLabel = "🎬 Mod DTW Aktif";
+        } else if (effRule.hasConstraint) {
+            dynamicEvalModeLabel = "😊 Mod Peraturan Wajah";
+        } else {
+            dynamicEvalModeLabel = "🪞 Mod Cermin (Klip AI belum dirakam)";
+            if (dynamicBannerText) {
+                dynamicBannerText.innerHTML = `<strong>Mod Cermin (Klip AI belum dirakam):</strong> Isyarat <strong>${signWord}</strong> belum mempunyai templat DTW. Gunakan video panduan untuk latihan kendiri atau tandakan selesai secara manual.`;
+            }
+        }
+
+        if (dynamicModePill) {
+            dynamicModePill.textContent = dynamicEvalModeLabel;
+        }
+        if (badge && !webcamRunning) {
+            badge.innerText = hasDtw ? "Model AI Gerakan (DTW Aktif) 🎬" : dynamicEvalModeLabel;
+        }
+    }
 
     function showCameraError(msg) {
         if (!errorEl) return;
@@ -347,17 +412,21 @@
                 knn.load(data.samples || []);
                 if (data.sequences) {
                     seqClassifier.load(data.sequences);
+                    dynamicEngine.setTemplates(data.sequences);
                 }
-                mlReady = knn.labels.includes(targetSign) || seqClassifier.labels.includes(targetSign);
-                if (mlReady && badge && !webcamRunning) {
-                    badge.innerText = seqClassifier.labels.includes(targetSign)
-                        ? "Model AI Gerakan (DTW Aktif) 🎬"
-                        : "Model AI Pintar (ML Aktif) 🤖";
+                mlReady = knn.labels.includes(targetSign) || dynamicEngine.templateLabels.includes(targetSign);
+                if (!isStaticSign) {
+                    refreshDynamicModeIndicators();
+                } else if (mlReady && badge && !webcamRunning) {
+                    badge.innerText = "Model AI Pintar (ML Aktif) 🤖";
                 }
             }
         } catch (e) {
             console.warn("Gagal memuatkan dataset AI:", e);
         }
+    }
+    if (!isStaticSign) {
+        refreshDynamicModeIndicators();
     }
     loadDataset();
 
@@ -426,6 +495,43 @@
         return faceInitPromise;
     }
 
+    async function initPoseMediaPipe() {
+        if (isStaticSign || poseLandmarker) return poseLandmarker;
+        if (poseInitPromise) return poseInitPromise;
+
+        poseInitPromise = (async () => {
+            try {
+                const { mod, fileset } = await getVisionRuntime();
+                const { PoseLandmarker } = mod;
+                const poseOptions = delegate => ({
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                        delegate,
+                    },
+                    runningMode: runningMode,
+                    numPoses: 1,
+                    minPoseDetectionConfidence: 0.45,
+                    minPosePresenceConfidence: 0.45,
+                    minTrackingConfidence: 0.45,
+                });
+                try {
+                    poseLandmarker = await PoseLandmarker.createFromOptions(fileset, poseOptions("GPU"));
+                } catch (gpuErr) {
+                    console.warn("PoseLandmarker GPU gagal, guna CPU fallback:", gpuErr);
+                    poseLandmarker = await PoseLandmarker.createFromOptions(fileset, poseOptions("CPU"));
+                }
+                return poseLandmarker;
+            } catch (err) {
+                console.warn("Gagal memuatkan PoseLandmarker (fallback trajektori kamera):", err);
+                return null;
+            } finally {
+                poseInitPromise = null;
+            }
+        })();
+
+        return poseInitPromise;
+    }
+
     async function initMediaPipe() {
         if (handLandmarker) return handLandmarker;
         if (initPromise) return initPromise;
@@ -441,7 +547,7 @@
                         delegate,
                     },
                     runningMode: runningMode,
-                    numHands: 1,
+                    numHands: isStaticSign ? 1 : 2,
                     minHandDetectionConfidence: 0.5,
                     minTrackingConfidence: 0.5,
                 });
@@ -456,11 +562,16 @@
                 if (enableFaceAi && !faceLandmarker) {
                     initFaceMediaPipe();
                 }
+                if (!isStaticSign && !poseLandmarker) {
+                    initPoseMediaPipe();
+                }
 
                 modelLoadFailed = false;
                 if (badge) {
                     if (webcamRunning) {
-                        badge.innerText = enableFaceAi ? "Mengimbas Tangan + Wajah 🟢" : "Sedang Mengimbas Tangan 🟢";
+                        badge.innerText = enableFaceAi
+                            ? (isStaticSign ? "Mengimbas Tangan + Wajah 🟢" : "Dinamik: 2 Tangan + Bahu + Wajah 🟢")
+                            : (isStaticSign ? "Sedang Mengimbas Tangan 🟢" : "Dinamik: 2 Tangan + Bahu 🟢");
                         badge.style.background = "#dcfce7";
                         badge.style.color = "#16a34a";
                     } else {
@@ -555,17 +666,32 @@
                 { duration: 4500 }
             );
 
+            segmenter.reset();
+            motionTracker.reset();
+            seqBuffer.reset();
+            smoother.reset();
+            consecutiveMatches = 0;
+            lastDynFeedbackUntil = 0;
+            lastVideoTime = -1;
+
             if (handLandmarker) {
                 if (enableFaceAi && !faceLandmarker) initFaceMediaPipe();
+                if (!isStaticSign && !poseLandmarker) initPoseMediaPipe();
                 if (badge) {
-                    badge.innerText = enableFaceAi ? "Mengimbas Tangan + Wajah 🟢" : "Sedang Mengimbas Tangan 🟢";
+                    badge.innerText = enableFaceAi
+                        ? (isStaticSign ? "Mengimbas Tangan + Wajah 🟢" : "Dinamik: 2 Tangan + Bahu + Wajah 🟢")
+                        : (isStaticSign ? "Sedang Mengimbas Tangan 🟢" : "Dinamik: 2 Tangan + Bahu 🟢");
                     badge.style.background = "#dcfce7";
                     badge.style.color = "#16a34a";
                 }
-                if (feedbackText) feedbackText.innerText = "Arahkan tangan anda ke dalam kotak kamera...";
+                if (feedbackText) {
+                    feedbackText.innerText = isStaticSign
+                        ? "Arahkan tangan anda ke dalam kotak kamera..."
+                        : `Sedia — Lakukan gerakan "${signWord}" lalu berhenti sekejap...`;
+                }
             } else {
                 if (badge) {
-                    badge.innerText = "Memuatkan AI Tangan & Wajah...";
+                    badge.innerText = isStaticSign ? "Memuatkan AI Tangan & Wajah..." : "Memuatkan AI Dinamik (2 Tangan + Bahu)...";
                     badge.style.background = "#fef3c7";
                     badge.style.color = "#d97706";
                 }
@@ -604,6 +730,12 @@
         latestFaceLandmarks = null;
         latestFaceBlendshapes = null;
         latestFaceContext = null;
+        latestPoseLandmarks = null;
+        latestPoseContext = null;
+        segmenter.reset();
+        motionTracker.reset();
+        seqBuffer.reset();
+        lastDynFeedbackUntil = 0;
         if (activeStream) {
             activeStream.getTracks().forEach(track => track.stop());
             activeStream = null;
@@ -675,15 +807,38 @@
             }
 
             let results = null;
+            const nowMs = performance.now();
             try {
-                const handTs = Math.max(performance.now(), lastHandTs + 1);
+                const handTs = Math.max(nowMs, lastHandTs + 1);
                 lastHandTs = handTs;
                 results = handLandmarker.detectForVideo(video, handTs);
             } catch (detectErr) {
                 console.warn("Ralat imbasan frame:", detectErr);
             }
 
-            if (enableFaceAi && faceLandmarker && (++faceFrameTick % 2) === 0) {
+            if (!isStaticSign) {
+                const tick = ++auxFrameTick;
+                if ((tick % 2) === 0 && poseLandmarker) {
+                    try {
+                        const poseTs = Math.max(performance.now(), lastPoseTs + 1);
+                        lastPoseTs = poseTs;
+                        const poseRes = poseLandmarker.detectForVideo(video, poseTs);
+                        latestPoseLandmarks = poseRes?.landmarks?.[0] || null;
+                    } catch (poseErr) {
+                        console.warn("Ralat imbasan bahu:", poseErr);
+                    }
+                } else if (enableFaceAi && faceLandmarker) {
+                    try {
+                        const faceTs = Math.max(performance.now(), lastFaceTs + 1);
+                        lastFaceTs = faceTs;
+                        const faceRes = faceLandmarker.detectForVideo(video, faceTs);
+                        latestFaceLandmarks = faceRes?.faceLandmarks?.[0] || null;
+                        latestFaceBlendshapes = faceRes?.faceBlendshapes?.[0]?.categories || null;
+                    } catch (faceErr) {
+                        console.warn("Ralat imbasan wajah:", faceErr);
+                    }
+                }
+            } else if (enableFaceAi && faceLandmarker && (++faceFrameTick % 2) === 0) {
                 try {
                     const faceTs = Math.max(performance.now(), lastFaceTs + 1);
                     lastFaceTs = faceTs;
@@ -695,10 +850,14 @@
                 }
             }
 
-            const landmarks = (results && results.landmarks && results.landmarks.length > 0)
-                ? results.landmarks[0]
-                : null;
+            const handsLm = (results && results.landmarks && results.landmarks.length > 0)
+                ? results.landmarks
+                : [];
+            const { primary: landmarks } = selectHandsOrder(handsLm, results?.handednesses || null, "Right");
 
+            latestPoseContext = (!isStaticSign && latestPoseLandmarks)
+                ? extractPoseContext(latestPoseLandmarks)
+                : null;
             latestFaceContext = enableFaceAi
                 ? extractFaceContext(landmarks, latestFaceLandmarks, latestFaceBlendshapes)
                 : null;
@@ -727,48 +886,133 @@
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+            if (!isStaticSign && latestPoseContext?.hasPose) {
+                drawPoseAnchors(canvasCtx, latestPoseLandmarks, canvasElement.width, canvasElement.height, latestPoseContext);
+            }
+
             if (enableFaceAi && latestFaceLandmarks && latestFaceContext?.hasFace) {
                 drawFaceAnchors(canvasCtx, latestFaceLandmarks, canvasElement.width, canvasElement.height, latestFaceContext);
             }
 
-            if (landmarks) {
-                const featVec = buildFeatureVector(landmarks, enableFaceAi ? latestFaceContext : null);
-                motionTracker.push(landmarks);
-                seqBuffer.push(featVec);
-                drawHand(canvasCtx, landmarks, canvasElement.width, canvasElement.height);
+            if (handsLm.length > 0) {
+                handsLm.forEach((h, hIdx) => drawHand(canvasCtx, h, canvasElement.width, canvasElement.height, hIdx));
+            }
 
-                // Draw sparkling neon trajectory trail for J or dynamic movement signs
-                if (targetSign === 'J' || (!isStaticSign && !motionTracker.isStill(0.035))) {
-                    const trail = motionTracker.getTrail();
-                    const jActive = targetSign === 'J' ? motionTracker.detectJMotion().matched : true;
-                    if (trail.length > 1) {
-                        canvasCtx.save();
-                        canvasCtx.beginPath();
-                        canvasCtx.strokeStyle = jActive ? "#2ed573" : "#ffeaa7";
-                        canvasCtx.lineWidth = 6;
-                        canvasCtx.lineCap = "round";
-                        canvasCtx.lineJoin = "round";
-                        canvasCtx.shadowColor = jActive ? "#2ed573" : "#fdcb6e";
-                        canvasCtx.shadowBlur = 14;
-                        trail.forEach((pt, i) => {
-                            const tx = pt.x * canvasElement.width;
-                            const ty = pt.y * canvasElement.height;
-                            if (i === 0) canvasCtx.moveTo(tx, ty);
-                            else canvasCtx.lineTo(tx, ty);
-                        });
-                        canvasCtx.stroke();
-                        canvasCtx.restore();
+            if (!isStaticSign) {
+                // DEDICATED DYNAMIC CLIP PIPELINE (Auto Mula–Gerak–Tamat, 146-dim 2-hand + Pose + Face)
+                if (landmarks) {
+                    motionTracker.push(landmarks);
+                    if (segmenter.state === "CAPTURING" || !motionTracker.isStill(0.03)) {
+                        const trailJoint = targetSign === 'J' ? 'pinky' : (targetSign === 'Z' ? 'index' : 'palm');
+                        const trail = motionTracker.getTrail(trailJoint);
+                        if (trail.length > 1) {
+                            canvasCtx.save();
+                            canvasCtx.beginPath();
+                            canvasCtx.strokeStyle = segmenter.state === "CAPTURING" ? "#38bdf8" : "#ffeaa7";
+                            canvasCtx.lineWidth = 6;
+                            canvasCtx.lineCap = "round";
+                            canvasCtx.lineJoin = "round";
+                            canvasCtx.shadowColor = segmenter.state === "CAPTURING" ? "#0284c7" : "#fdcb6e";
+                            canvasCtx.shadowBlur = 14;
+                            trail.forEach((pt, i) => {
+                                const tx = pt.x * canvasElement.width;
+                                const ty = pt.y * canvasElement.height;
+                                if (i === 0) canvasCtx.moveTo(tx, ty);
+                                else canvasCtx.lineTo(tx, ty);
+                            });
+                            canvasCtx.stroke();
+                            canvasCtx.restore();
+                        }
                     }
                 }
 
-                // Evaluate static or dynamic BIM gesture (Hand + Face Hybrid)
+                const frameVec146 = landmarks
+                    ? buildMultimodalVector(
+                        handsLm,
+                        results?.handednesses || null,
+                        enableFaceAi ? latestFaceContext : null,
+                        latestPoseContext
+                    )
+                    : null;
+                if (frameVec146) seqBuffer.push(frameVec146);
+
+                const segRes = segmenter.pushFrame({
+                    frameVec: frameVec146,
+                    handsLm,
+                    primaryHand: landmarks,
+                    faceContext: enableFaceAi ? latestFaceContext : null,
+                    timestampMs: nowMs,
+                });
+
+                if (segRes.event === "started") {
+                    lastDynFeedbackUntil = 0;
+                    if (dynamicModePill) dynamicModePill.innerText = "🔴 Merakam Gerakan...";
+                    if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay";
+                    if (feedbackText) feedbackText.innerText = `Mengesan gerakan... Buat isyarat "${signWord}" lalu berhenti sekejap.`;
+                    if (confidencePct) confidencePct.innerText = "35%";
+                    if (confidenceBar) confidenceBar.style.width = "35%";
+                } else if (segRes.state === "CAPTURING") {
+                    if (dynamicModePill) dynamicModePill.innerText = "🔴 Merakam Gerakan...";
+                    const liveProg = Math.min(72, 35 + Math.round((segRes.durationMs || 0) / 45));
+                    if (confidencePct) confidencePct.innerText = liveProg + "%";
+                    if (confidenceBar) confidenceBar.style.width = liveProg + "%";
+                } else if (segRes.event === "too_short") {
+                    lastDynFeedbackUntil = nowMs + 1800;
+                    if (dynamicModePill) dynamicModePill.innerText = dynamicEvalModeLabel;
+                    if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay";
+                    if (feedbackText) feedbackText.innerText = "Gerakan terlalu singkat (<8 frame). Gerakkan tangan dengan lebih jelas.";
+                    if (confidencePct) confidencePct.innerText = "20%";
+                    if (confidenceBar) confidenceBar.style.width = "20%";
+                } else if (segRes.event === "completed") {
+                    const evalRes = dynamicEngine.evaluateClip({
+                        mode: "target-locked",
+                        targetLabel: targetSign,
+                        clipFrames: segRes.clip,
+                        handsHistory: segRes.handsHistory,
+                        faceHistory: segRes.faceHistory,
+                        faceAiEnabled: enableFaceAi,
+                    });
+                    const pctVal = Math.max(0, Math.min(100, Math.round(evalRes.confidence || 0)));
+                    lastDynFeedbackUntil = nowMs + 2400;
+
+                    if (confidencePct) confidencePct.innerText = evalRes.status === "mirror" ? "Cermin" : (pctVal + "%");
+                    if (confidenceBar) confidenceBar.style.width = pctVal + "%";
+
+                    if (evalRes.matched) {
+                        if (dynamicModePill) dynamicModePill.innerText = `✅ Tepat! (${pctVal}%)`;
+                        if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay feedback-success";
+                        if (feedbackText) feedbackText.innerText = evalRes.hint;
+                        onGestureSuccess(Math.max(60, pctVal || 85));
+                    } else {
+                        if (dynamicModePill) dynamicModePill.innerText = dynamicEvalModeLabel;
+                        if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay";
+                        if (feedbackText) feedbackText.innerText = evalRes.hint;
+                    }
+                } else if (nowMs >= lastDynFeedbackUntil) {
+                    if (dynamicModePill) dynamicModePill.innerText = dynamicEvalModeLabel;
+                    if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay";
+                    if (landmarks) {
+                        if (feedbackText) {
+                            feedbackText.innerText = `Sedia — Tiru gerakan "${signWord}" lalu berhenti sekejap.`;
+                        }
+                    } else {
+                        if (feedbackText) feedbackText.innerText = "Arahkan tangan & bahu anda ke dalam kotak kamera...";
+                        if (confidencePct) confidencePct.innerText = "0%";
+                        if (confidenceBar) confidenceBar.style.width = "0%";
+                    }
+                }
+            } else if (landmarks) {
+                const featVec = buildFeatureVector(landmarks, enableFaceAi ? latestFaceContext : null);
+                motionTracker.push(landmarks);
+                seqBuffer.push(featVec);
+
+                // Evaluate static BIM gesture (Hand + Face Hybrid)
                 const evalResult = evaluateGesture(landmarks, targetSign);
                 const displayConf = Math.max(0, Math.min(100, Math.round(evalResult.confidence || 0)));
                 if (confidencePct) confidencePct.innerText = displayConf + "%";
                 if (confidenceBar) confidenceBar.style.width = displayConf + "%";
 
-                // J hook needs 2 frames, dynamic signs need 6 frames, static signs need 5 frames
-                const targetFramesRequired = targetSign === 'J' ? 2 : (!isStaticSign ? 6 : 5);
+                const targetFramesRequired = 5;
 
                 if (evalResult.matched) {
                     consecutiveMatches++;
@@ -781,9 +1025,7 @@
                     }
                     if (feedbackText) {
                         const praisePrefix = evalResult.faceHintOk ? `${evalResult.faceHintOk} ` : "Bagus! ";
-                        feedbackText.innerText = isStaticSign
-                            ? `${praisePrefix}Tahan (${consecutiveMatches}/${targetFramesRequired})...`
-                            : `${praisePrefix}Teruskan (${consecutiveMatches}/${targetFramesRequired})...`;
+                        feedbackText.innerText = `${praisePrefix}Tahan (${consecutiveMatches}/${targetFramesRequired})...`;
                     }
                     if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay feedback-success";
 
@@ -809,10 +1051,10 @@
     }
 
     // Draw skeleton joints on canvas
-    function drawHand(ctx, landmarks, w, h) {
-        ctx.strokeStyle = "#00cec9";
+    function drawHand(ctx, landmarks, w, h, handIdx = 0) {
+        ctx.strokeStyle = handIdx === 0 ? "#00cec9" : "#a29bfe";
         ctx.lineWidth = 4;
-        ctx.fillStyle = "#ff7675";
+        ctx.fillStyle = handIdx === 0 ? "#ff7675" : "#ffeaa7";
 
         const connections = [
             [0,1],[1,2],[2,3],[3,4], // Thumb
@@ -854,32 +1096,142 @@
             ? evaluateFaceSignBoost(target, activeFaceCtx)
             : null;
 
-        // SPECIAL CASE 1: TARGET J (DYNAMIC HOOK)
-        if (target === 'J') {
-            const isPinky = isPinkyUpShape(lm);
-            if (isPinky) {
-                const jCheck = motionTracker ? motionTracker.detectJMotion() : { matched: false };
-                if (jCheck && jCheck.matched) {
+        // =====================================================================
+        // PIPELINE A: DEDICATED DYNAMIC CAMERA MODE (!isStaticSign)
+        // Strictly evaluates DTW sequence clips & motion trajectories (J, Z, BIM)
+        // Never falls back to Static KNN!
+        // =====================================================================
+        if (!isStaticSign) {
+            if (target === 'J') {
+                const isPinky = isPinkyUpShape(lm);
+                if (isPinky) {
+                    const jCheck = motionTracker ? motionTracker.detectJMotion() : { matched: false };
+                    if (jCheck && jCheck.matched) {
+                        return {
+                            matched: true,
+                            confidence: jCheck.confidence || 96,
+                            hint: "Hebat! Gerakan cangkuk J dikesan dengan sempurna! ⭐"
+                        };
+                    }
                     return {
-                        matched: true,
-                        confidence: jCheck.confidence || 96,
-                        hint: "Hebat! Gerakan cangkuk J dikesan dengan sempurna! ⭐"
+                        matched: false,
+                        confidence: 70,
+                        hint: "Bagus! Sekarang lukis bentuk cangkuk J di udara (turun ke bawah lalu lengkung ke atas)."
                     };
                 }
                 return {
                     matched: false,
-                    confidence: 70,
-                    hint: "Bagus! Sekarang lukis bentuk cangkuk J di udara (turun ke bawah lalu lengkung ke atas)."
+                    confidence: 30,
+                    hint: "Tegakkan jari kelengkeng dahulu, kemudian buat pergerakan cangkuk J."
+                };
+            }
+
+            if (target === 'Z') {
+                const isIndex = isIndexPointingShape(lm) || (indexUp && !middleUp && !ringUp && !pinkyUp);
+                if (isIndex) {
+                    const zCheck = motionTracker ? motionTracker.detectZMotion() : { matched: false };
+                    if (zCheck && zCheck.matched) {
+                        return {
+                            matched: true,
+                            confidence: zCheck.confidence || 95,
+                            hint: "Hebat! Gerakan zig-zag Z dikesan dengan sempurna! ⭐"
+                        };
+                    }
+                    return {
+                        matched: false,
+                        confidence: 68,
+                        hint: "Bagus! Sekarang lukis bentuk 'Z' di udara dengan jari telunjuk."
+                    };
+                }
+                return {
+                    matched: false,
+                    confidence: 30,
+                    hint: "Tegakkan jari telunjuk dahulu, kemudian lukis bentuk Z di udara."
+                };
+            }
+
+            if (faceBoost?.strictBlocked) {
+                return {
+                    matched: false,
+                    confidence: 45,
+                    hint: faceBoost.hintNeed || ("Dekatkan tangan ke kawasan wajah yang betul untuk " + signWord + "...")
+                };
+            }
+
+            // Dynamic Sequence DTW Classifier (if trained 30-frame sequence clips exist for this sign)
+            if (seqClassifier.size > 0 && seqClassifier.labels.includes(target)) {
+                const nowMs = performance.now();
+                if (seqBuffer.length >= 10 && !motionTracker.isStill(0.03)) {
+                    const seqPred = seqClassifier.predict(seqBuffer.getFrames(), activeFaceCtx);
+                    if (seqPred.label === target && seqPred.confidence >= 52) {
+                        lastDynamicMatchTime = nowMs;
+                        lastDynamicConf = seqPred.confidence;
+                        return {
+                            matched: true,
+                            confidence: seqPred.confidence,
+                            faceHintOk: faceBoost?.hintOk || null,
+                            hint: faceBoost?.hintOk || ("Hebat! Kamera Dinamik DTW mengesahkan gerakan " + signWord + " (" + seqPred.confidence + "%).")
+                        };
+                    }
+                    if (nowMs - lastDynamicMatchTime < 750) {
+                        return {
+                            matched: true,
+                            confidence: lastDynamicConf,
+                            faceHintOk: faceBoost?.hintOk || null,
+                            hint: faceBoost?.hintOk || ("Hebat! Gerakan " + signWord + " dikesan!")
+                        };
+                    }
+                    return {
+                        matched: false,
+                        confidence: Math.max(25, seqPred.label === target ? seqPred.confidence : 35),
+                        hint: faceBoost?.hintNeed || ("Teruskan pergerakan isyarat " + signWord + " mengikut video panduan...")
+                    };
+                }
+                if (nowMs - lastDynamicMatchTime < 750) {
+                    return {
+                        matched: true,
+                        confidence: lastDynamicConf,
+                        faceHintOk: faceBoost?.hintOk || null,
+                        hint: faceBoost?.hintOk || ("Hebat! Gerakan " + signWord + " dikesan!")
+                    };
+                }
+                return {
+                    matched: false,
+                    confidence: 25,
+                    hint: faceBoost?.hintNeed || ("Gerakkan tangan anda mengikut video untuk isyarat " + signWord + "...")
+                };
+            }
+
+            // Heuristic motion fallback for dynamic signs without custom DTW clips yet
+            if (motionTracker && !motionTracker.isStill(0.035)) {
+                const dynConf = Math.min(98, 86 + (faceBoost?.bonus || 0));
+                return {
+                    matched: true,
+                    confidence: dynConf,
+                    faceHintOk: faceBoost?.hintOk || null,
+                    hint: faceBoost?.hintOk || "Bagus! Pergerakan tangan dikesan..."
                 };
             }
             return {
                 matched: false,
-                confidence: 30,
-                hint: "Tegakkan jari kelengkeng dahulu, kemudian buat pergerakan cangkuk J."
+                confidence: 45,
+                hint: faceBoost?.hintNeed || ("Tiru pergerakan tangan bagi '" + signWord + "' mengikut video panduan...")
             };
         }
 
-        // SPECIAL CASE 2: TARGET I (STATIC PINKY UP)
+        // =====================================================================
+        // PIPELINE B: DEDICATED STATIC CAMERA MODE (isStaticSign)
+        // Strictly evaluates static handshapes when held steady.
+        // Never triggers DTW sequences!
+        // =====================================================================
+        if (motionTracker && !motionTracker.isStill(0.085)) {
+            return {
+                matched: false,
+                confidence: 40,
+                hint: "Mod Statik: Tahan tangan anda pegun (jangan gerakkan tangan)..."
+            };
+        }
+
         if (target === 'I') {
             const isPinky = isPinkyUpShape(lm);
             if (isPinky) {
@@ -888,7 +1240,7 @@
                     return {
                         matched: false,
                         confidence: 60,
-                        hint: "Ini isyarat J (cangkuk). Untuk isyarat I, tahan tangan pegun tanpa melukis cangkuk."
+                        hint: "Ini gerakan J (cangkuk). Untuk isyarat I, tahan tangan pegun tanpa melukis cangkuk."
                     };
                 }
                 return {
@@ -904,42 +1256,10 @@
             };
         }
 
-        // 1. Dynamic Sequence DTW Classifier (if trained 30-frame sequence clips exist for this sign)
-        if (seqClassifier.size > 0 && seqClassifier.labels.includes(target)) {
-            if (faceBoost?.strictBlocked) {
-                return {
-                    matched: false,
-                    confidence: 45,
-                    hint: faceBoost.hintNeed || ("Dekatkan tangan ke kawasan wajah yang betul untuk " + signWord + "...")
-                };
-            }
-            if (seqBuffer.length >= 12 && !motionTracker.isStill(0.035)) {
-                const seqPred = seqClassifier.predict(seqBuffer.getFrames(), activeFaceCtx);
-                if (seqPred.label === target && seqPred.confidence >= 55) {
-                    return {
-                        matched: true,
-                        confidence: seqPred.confidence,
-                        faceHintOk: faceBoost?.hintOk || null,
-                        hint: faceBoost?.hintOk || ("Hebat! Gerakan AI mengesahkan isyarat " + signWord + " (" + seqPred.confidence + "%).")
-                    };
-                }
-                return {
-                    matched: false,
-                    confidence: Math.max(25, seqPred.label === target ? seqPred.confidence : 35),
-                    hint: faceBoost?.hintNeed || ("Teruskan pergerakan isyarat " + signWord + " mengikut video panduan...")
-                };
-            }
-            return {
-                matched: false,
-                confidence: 25,
-                hint: faceBoost?.hintNeed || ("Gerakkan tangan anda mengikut video untuk isyarat " + signWord + "...")
-            };
-        }
-
-        // 2. Static KNN Classifier (Multimodal 78-feature fusion when face context is trained)
+        // Static KNN Classifier (Multimodal 78-feature fusion when face context is trained)
         if (knn.size > 0 && knn.labels.includes(target)) {
             const queryVec = buildFeatureVector(lm, activeFaceCtx);
-            const pred = knn.predict(queryVec, motionTracker, activeFaceCtx);
+            const pred = knn.predict(queryVec, null, activeFaceCtx);
             if (faceBoost?.strictBlocked) {
                 return {
                     matched: false,
@@ -952,38 +1272,13 @@
                     matched: true,
                     confidence: pred.confidence,
                     faceHintOk: faceBoost?.hintOk || null,
-                    hint: faceBoost?.hintOk || ("Bagus! Pengecaman AI mengesahkan isyarat " + signWord + " (" + pred.confidence + "%). Tahan...")
+                    hint: faceBoost?.hintOk || ("Bagus! Kamera Statik mengesahkan isyarat " + signWord + " (" + pred.confidence + "%). Tahan...")
                 };
             }
             return {
                 matched: false,
                 confidence: Math.max(25, pred.label === target ? pred.confidence : 35),
-                hint: faceBoost?.hintNeed || ("Samakan bentuk jari dan kedudukan tangan mengikut panduan '" + signWord + "'...")
-            };
-        }
-
-        // 3. Heuristic fallback for dynamic movement signs without custom DTW dataset yet
-        if (!isStaticSign) {
-            if (faceBoost?.strictBlocked) {
-                return {
-                    matched: false,
-                    confidence: 45,
-                    hint: faceBoost.hintNeed || ("Arahkan tangan ke kawasan wajah yang betul bagi '" + signWord + "'...")
-                };
-            }
-            if (motionTracker && !motionTracker.isStill(0.035)) {
-                const dynConf = Math.min(98, 86 + (faceBoost?.bonus || 0));
-                return {
-                    matched: true,
-                    confidence: dynConf,
-                    faceHintOk: faceBoost?.hintOk || null,
-                    hint: faceBoost?.hintOk || "Bagus! Pergerakan tangan dikesan..."
-                };
-            }
-            return {
-                matched: false,
-                confidence: 45,
-                hint: faceBoost?.hintNeed || ("Tiru pergerakan tangan bagi '" + signWord + "' mengikut video panduan...")
+                hint: faceBoost?.hintNeed || ("Samakan bentuk jari dan tahan pegun mengikut panduan '" + signWord + "'...")
             };
         }
 
