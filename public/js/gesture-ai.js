@@ -369,7 +369,7 @@ export function extractPoseContext(poseLm) {
  * Consistently assigns primary vs secondary hand using MediaPipe handedness labels,
  * preventing random slot swaps between frames when two hands are visible.
  */
-export function selectHandsOrder(handsLm, handedness = null, preferredPrimary = "Right") {
+export function selectHandsOrder(handsLm, handedness = null, preferredPrimary = "Right", prevPrimaryWrist = null) {
     if (!Array.isArray(handsLm) || handsLm.length === 0) {
         return { primary: null, secondary: null, primaryIdx: -1 };
     }
@@ -378,15 +378,34 @@ export function selectHandsOrder(handsLm, handedness = null, preferredPrimary = 
     }
 
     const pref = String(preferredPrimary || "Right").toLowerCase();
-    let primaryIdx = 0;
+    let primaryIdx = -1;
     if (Array.isArray(handedness)) {
-        const foundIdx = handedness.findIndex(
-            h => String(h?.[0]?.categoryName || "").toLowerCase() === pref
-        );
-        if (foundIdx >= 0 && handsLm[foundIdx]) {
-            primaryIdx = foundIdx;
+        const matchedIndices = [];
+        for (let i = 0; i < handsLm.length; i++) {
+            if (String(handedness[i]?.[0]?.categoryName || "").toLowerCase() === pref) {
+                matchedIndices.push(i);
+            }
+        }
+        // Use handedness directly only when it identifies an unambiguous single primary hand
+        if (matchedIndices.length === 1) {
+            primaryIdx = matchedIndices[0];
         }
     }
+
+    if (primaryIdx < 0 && prevPrimaryWrist && Number.isFinite(prevPrimaryWrist.x) && Number.isFinite(prevPrimaryWrist.y)) {
+        let bestDist = Infinity;
+        for (let i = 0; i < handsLm.length; i++) {
+            const w = handsLm[i]?.[0];
+            if (!w) continue;
+            const d = Math.hypot(w.x - prevPrimaryWrist.x, w.y - prevPrimaryWrist.y);
+            if (d < bestDist) {
+                bestDist = d;
+                primaryIdx = i;
+            }
+        }
+    }
+
+    if (primaryIdx < 0) primaryIdx = 0;
     const secondaryIdx = primaryIdx === 0 ? 1 : 0;
     return {
         primary: handsLm[primaryIdx] || null,
@@ -410,8 +429,8 @@ function estimateHandSpan(handLm) {
  *   [78..140]  63 secondary hand coordinates (or zeros if single hand)
  *   [141..145] hasHand2, secWristDx, secWristDy, wristDist, hasPose
  */
-export function buildMultimodalVector(handsLm, handedness = null, faceContext = null, poseContext = null) {
-    const { primary, secondary } = selectHandsOrder(handsLm, handedness);
+export function buildMultimodalVector(handsLm, handedness = null, faceContext = null, poseContext = null, prevPrimaryWrist = null) {
+    const { primary, secondary } = selectHandsOrder(handsLm, handedness, "Right", prevPrimaryWrist);
     if (!primary || primary.length < 21) {
         return new Array(FULL_V2_FEATURE_DIM).fill(0);
     }
@@ -1150,6 +1169,9 @@ export function trimIdleSequenceFrames(frames, minFrames = 10) {
                 const diff = b[d] - a[d];
                 sumSq += diff * diff * 0.7;
             }
+            const relDx = (b[142] - a[142]) * 2.0;
+            const relDy = (b[143] - a[143]) * 2.0;
+            sumSq += relDx * relDx + relDy * relDy;
         }
         motion[i] = Math.sqrt(sumSq);
     }
@@ -1611,6 +1633,8 @@ export class MotionSegmenter {
         this.pauseMs = opts.pauseMs ?? 280;
         this.maxClipMs = opts.maxClipMs ?? 2400;
         this.cooldownMs = opts.cooldownMs ?? 450;
+        this.staleGapMs = opts.staleGapMs ?? 300;
+        this.emptyClearMs = opts.emptyClearMs ?? 120;
         this.startMotionThresh = opts.startMotionThresh ?? 0.026;
         this.sustainMotionThresh = opts.sustainMotionThresh ?? 0.018;
         this.reset();
@@ -1621,6 +1645,7 @@ export class MotionSegmenter {
         this.preroll = [];
         this.clip = [];
         this.prevItem = null;
+        this.lastSeenMs = null;
         this.captureStartMs = null;
         this.lastMovingMs = null;
         this.cooldownUntilMs = 0;
@@ -1689,6 +1714,10 @@ export class MotionSegmenter {
                 this.state = "IDLE";
                 this.prevItem = null;
                 this.preroll = [];
+                this.lastSeenMs = null;
+            } else if (this.state === "IDLE" && this.lastSeenMs !== null && (now - this.lastSeenMs) >= this.emptyClearMs) {
+                this.prevItem = null;
+                this.preroll = [];
             }
             return {
                 state: this.state,
@@ -1700,8 +1729,9 @@ export class MotionSegmenter {
             };
         }
 
+        const prevWrist = this.prevItem?.primaryHand?.[0] || null;
         const resolvedPrimary = primaryHand ||
-            (Array.isArray(handsLm) && handsLm.length > 0 ? selectHandsOrder(handsLm).primary : null);
+            (Array.isArray(handsLm) && handsLm.length > 0 ? selectHandsOrder(handsLm, null, "Right", prevWrist).primary : null);
 
         const currentItem = {
             frameVec,
@@ -1709,6 +1739,7 @@ export class MotionSegmenter {
             faceContext: faceContext || null,
             timestampMs: now,
         };
+        this.lastSeenMs = now;
 
         if (this.state === "COOLDOWN") {
             this.prevItem = currentItem;
@@ -1726,9 +1757,13 @@ export class MotionSegmenter {
             };
         }
 
-        const motion = computeFrameMotionScore(this.prevItem, currentItem);
-
         if (this.state === "IDLE") {
+            if (this.prevItem && (now - this.prevItem.timestampMs) > this.staleGapMs) {
+                this.prevItem = null;
+                this.preroll = [];
+            }
+
+            const motion = computeFrameMotionScore(this.prevItem, currentItem);
             if (this.prevItem && motion >= this.startMotionThresh) {
                 this.state = "CAPTURING";
                 this.clip = [...this.preroll, currentItem];
@@ -1763,6 +1798,7 @@ export class MotionSegmenter {
         }
 
         // CAPTURING state
+        const motion = computeFrameMotionScore(this.prevItem, currentItem);
         this.clip.push(currentItem);
         const isMoving = motion >= this.sustainMotionThresh;
         if (isMoving) {
@@ -1819,6 +1855,32 @@ function summarizeClipFaces(faceHistory) {
     return { validFaces, zoneCounts, exprCounts, peakFaceCtx };
 }
 
+function computeClipTrajectorySpan(clipFrames) {
+    if (!Array.isArray(clipFrames) || clipFrames.length < 2) return 0;
+    let minIx = Infinity, maxIx = -Infinity, minIy = Infinity, maxIy = -Infinity;
+    let minPx = Infinity, maxPx = -Infinity, minPy = Infinity, maxPy = -Infinity;
+    let count = 0;
+
+    for (const f of clipFrames) {
+        if (!f || f.length < 78 || f[77] < 0.2) continue;
+        count++;
+        if (f[63] < minIx) minIx = f[63];
+        if (f[63] > maxIx) maxIx = f[63];
+        if (f[64] < minIy) minIy = f[64];
+        if (f[64] > maxIy) maxIy = f[64];
+        if (f[65] < minPx) minPx = f[65];
+        if (f[65] > maxPx) maxPx = f[65];
+        if (f[66] < minPy) minPy = f[66];
+        if (f[66] > maxPy) maxPy = f[66];
+    }
+
+    if (count < 2) return 0;
+    return Math.max(
+        Math.hypot(maxIx - minIx, maxIy - minIy),
+        Math.hypot(maxPx - minPx, maxPy - minPy)
+    );
+}
+
 /**
  * DynamicGestureEngine: Unified clip-based dynamic sign evaluator supporting:
  * - Target-Locked mode (student practice with strict Option-A 0-clip rules + Mirror Mode)
@@ -1829,6 +1891,8 @@ export class DynamicGestureEngine {
         this.seqClassifier = new SequenceClassifier(opts.targetLength || 30);
         this.targetDtwThreshold = opts.targetDtwThreshold ?? 55;
         this.openSetDtwThreshold = opts.openSetDtwThreshold ?? 52;
+        this.minDynamicTravel = opts.minDynamicTravel ?? 0.04;
+        this.audience = opts.audience || "studio";
     }
 
     setTemplates(sequences) {
@@ -1850,6 +1914,7 @@ export class DynamicGestureEngine {
         handsHistory = [],
         faceHistory = [],
         faceAiEnabled = false,
+        audience = this.audience,
     } = {}) {
         const validHands = (handsHistory || []).filter(lm => Array.isArray(lm) && lm.length >= 21);
         const { validFaces, zoneCounts, exprCounts, peakFaceCtx } = summarizeClipFaces(faceHistory);
@@ -2065,12 +2130,15 @@ export class DynamicGestureEngine {
         // Strict Option A fallback for 0-clip signs
         const rule = getEffectiveFaceRule(normTarget);
         if (!rule.hasConstraint) {
+            const mirrorHint = audience === "student"
+                ? `Mod Cermin Aktif: Isyarat ${displayName} belum mempunyai templat DTW. Teruskan berlatih ikut video panduan atau klik 'Tandakan Isyarat Ini Sebagai Selesai' di bawah.`
+                : `Mod Cermin Aktif: Isyarat ${displayName} belum mempunyai templat DTW. Latih mengikut video panduan atau rakam templat di AI Studio.`;
             return {
                 status: "mirror",
                 matched: false,
                 label: null,
                 confidence: 0,
-                hint: `Mod Cermin Aktif: Isyarat ${displayName} belum mempunyai templat DTW. Latih mengikut video panduan atau rakam templat di AI Studio.`,
+                hint: mirrorHint,
                 source: "mirror",
             };
         }
@@ -2090,6 +2158,22 @@ export class DynamicGestureEngine {
 
         const zoneMatched = !rule.zones || rule.zones.some(z => (zoneCounts[z] || 0) >= 2);
         const exprMatched = !rule.exprs || rule.exprs.some(e => (exprCounts[e] || 0) >= 2);
+        const handTravel = computeSpanMagnitude(validHands.map(toTrackPoint).filter(Boolean));
+        const trajSpan = computeClipTrajectorySpan(clipFrames);
+        const hasEnoughTravel = validHands.length > 0
+            ? (handTravel >= this.minDynamicTravel)
+            : (trajSpan >= 0.06);
+
+        if (zoneMatched && exprMatched && !hasEnoughTravel) {
+            return {
+                status: "miss",
+                matched: false,
+                label: null,
+                confidence: 45,
+                hint: `Gerakkan tangan anda mengikut video untuk isyarat ${displayName} (jangan pegun).`,
+                source: "face-rule",
+            };
+        }
 
         if (zoneMatched && exprMatched) {
             let conf = 82;

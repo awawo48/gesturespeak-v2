@@ -367,3 +367,56 @@ test("6. J and Z clip-mode trajectory recognition with end-of-stroke pause settl
     assert.equal(zOpen.status, "matched");
     assert.equal(zOpen.label, "Z");
 });
+
+test("7. MotionSegmenter resets stale pre-roll when hands disappear or gap exceeds 300ms in IDLE", () => {
+    const seg = new MotionSegmenter();
+    // Establish initial idle hand at (0.2, 0.7)
+    pushSyntheticFrame(seg, 0.2, 0.7, 0);
+    pushSyntheticFrame(seg, 0.2, 0.7, 40);
+
+    // Hand drops out of camera for several frames during IDLE
+    for (let t = 80; t <= 320; t += 40) {
+        const emptyRes = seg.pushFrame({ frameVec: null, timestampMs: t });
+        assert.equal(emptyRes.state, "IDLE");
+    }
+
+    // Re-enter camera at completely different resting position (0.7, 0.4) -> must NOT falsely start CAPTURING
+    const reEnter = pushSyntheticFrame(seg, 0.7, 0.4, 360);
+    assert.equal(reEnter.state, "IDLE");
+    assert.equal(reEnter.event, null);
+});
+
+test("8. Option-A 0-clip face-rule enforces MIN_DYNAMIC_TRAVEL and student mirror audience guidance", () => {
+    const studentEngine = new DynamicGestureEngine({ audience: "student" });
+    const stationaryHands = Array.from({ length: 12 }, () => makeHand({ cx: 0.5, cy: 0.5 }));
+    const stationaryClip = Array.from({ length: 12 }, () => {
+        const v = new Array(FULL_V2_FEATURE_DIM).fill(0);
+        v[77] = 1.0;
+        return v;
+    });
+
+    // Stationary hand with matching face zone & expr must fail MIN_DYNAMIC_TRAVEL
+    const stillGembira = studentEngine.evaluateClip({
+        mode: "target-locked",
+        targetLabel: "GEMBIRA",
+        clipFrames: stationaryClip,
+        handsHistory: stationaryHands,
+        faceHistory: Array.from({ length: 4 }, () => ({ hasFace: true, zone: "dada", expression: "gembira" })),
+        faceAiEnabled: true,
+    });
+    assert.equal(stillGembira.status, "miss");
+    assert.equal(stillGembira.matched, false);
+
+    // Student mirror mode directs to manual completion button instead of Admin AI Studio
+    const bukuStudent = studentEngine.evaluateClip({
+        mode: "target-locked",
+        targetLabel: "BUKU",
+        clipFrames: makeMovingClip(12),
+        handsHistory: Array.from({ length: 12 }, (_, i) => makeHand({ cx: 0.4 + i * 0.015, cy: 0.5 })),
+        faceHistory: [],
+        faceAiEnabled: false,
+    });
+    assert.equal(bukuStudent.status, "mirror");
+    assert.ok(!bukuStudent.hint.includes("AI Studio"), `Student hint must not tell child to use AI Studio: ${bukuStudent.hint}`);
+    assert.ok(bukuStudent.hint.includes("Selesai"), `Expected manual completion guidance, got: ${bukuStudent.hint}`);
+});

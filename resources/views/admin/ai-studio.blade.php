@@ -1108,8 +1108,6 @@
         KnnClassifier,
         PredictionSmoother,
         HandMotionTracker,
-        SequenceClassifier,
-        SequenceBuffer,
         MotionSegmenter,
         DynamicGestureEngine
     } from "{{ asset('js/gesture-ai.js') }}";
@@ -1147,6 +1145,8 @@
     let latestFaceContext = null;
     let latestPoseLandmarks = null;
     let latestPoseContext = null;
+    let lastPrimaryWrist = null;
+    let prevPrimaryWristForVec = null;
     let faceFrameTick = 0;
     let auxFrameTick = 0;
     let lastHandTs = -1;
@@ -1168,10 +1168,8 @@
     let lastDynamicTestMatch = { label: null, text: "", pct: "0%", time: 0 };
 
     const motionTracker = new HandMotionTracker(45);
-    const seqClassifier = new SequenceClassifier(30);
-    const seqBuffer = new SequenceBuffer(45);
     const segmenter = new MotionSegmenter();
-    const dynamicEngine = new DynamicGestureEngine();
+    const dynamicEngine = new DynamicGestureEngine({ audience: "studio" });
     let counts = @json((object) $sampleCounts);
     let sequenceCounts = @json((object) $sequenceCounts);
 
@@ -1219,6 +1217,10 @@
     }
 
     function setStudioCameraMode(mode) {
+        if (busy) {
+            setMsg("Batalkan rakaman aktif dahulu sebelum menukar mod kamera.", "err");
+            return;
+        }
         studioCameraMode = mode === "dynamic" ? "dynamic" : "static";
         const isDyn = studioCameraMode === "dynamic";
 
@@ -1285,9 +1287,10 @@
 
         // Reset buffers so switching modes starts fresh
         motionTracker.reset();
-        seqBuffer.reset();
         segmenter.reset();
         smoother.reset();
+        lastPrimaryWrist = null;
+        prevPrimaryWristForVec = null;
         lastDynamicTestMatch = { label: null, text: "", pct: "0%", time: 0 };
         if (testing) updateTestDisplay("—", "0%", "0%");
 
@@ -1715,9 +1718,10 @@
         latestFaceContext = null;
         latestPoseLandmarks = null;
         latestPoseContext = null;
+        lastPrimaryWrist = null;
+        prevPrimaryWristForVec = null;
         segmenter.reset();
         motionTracker.reset();
-        seqBuffer.reset();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         $("studio-placeholder").style.display = "flex";
         $("studio-hud").style.display = "none";
@@ -1791,12 +1795,16 @@
             if (res && res.landmarks && res.landmarks.length > 0) {
                 allHandsLandmarks = res.landmarks;
                 allHandsHandednesses = res.handednesses || [];
-                const ordered = selectHandsOrder(allHandsLandmarks, allHandsHandednesses, "Right");
+                prevPrimaryWristForVec = lastPrimaryWrist;
+                const ordered = selectHandsOrder(allHandsLandmarks, allHandsHandednesses, "Right", lastPrimaryWrist);
                 latestLandmarks = ordered.primary;
+                lastPrimaryWrist = latestLandmarks?.[0] ? { x: latestLandmarks[0].x, y: latestLandmarks[0].y } : null;
             } else {
                 latestLandmarks = null;
                 allHandsLandmarks = [];
                 allHandsHandednesses = [];
+                lastPrimaryWrist = null;
+                prevPrimaryWristForVec = null;
             }
 
             // Compute Pose & spatial Hand-to-Face anchor contexts
@@ -1839,7 +1847,6 @@
 
             if (latestLandmarks) {
                 motionTracker.push(latestLandmarks);
-                seqBuffer.push(buildFeatureVector(latestLandmarks, enableFaceAi ? latestFaceContext : null));
 
                 const hudDtw = $("hud-dtw-buffer");
                 if (hudDtw && studioCameraMode === "dynamic" && !testing) {
@@ -1854,10 +1861,12 @@
                     allHandsLandmarks.forEach((lm, handIdx) => drawSkeleton(lm, handIdx));
                 }
 
-                // Draw motion trail in Dynamic Camera Mode OR when J/Z motion is detected
+                // Draw motion trail when J/Z active OR in Dynamic Camera Mode
                 const activeLbl = getActiveLabel();
-                const jCheck = motionTracker.detectJMotion();
-                const zCheck = motionTracker.detectZMotion();
+                const needJCheck = studioCameraMode !== "dynamic" || activeLbl === "J";
+                const needZCheck = studioCameraMode === "dynamic" && activeLbl === "Z";
+                const jCheck = needJCheck ? motionTracker.detectJMotion() : { matched: false };
+                const zCheck = needZCheck ? motionTracker.detectZMotion() : { matched: false };
                 const shouldDrawTrail = studioCameraMode === "dynamic"
                     ? (segmenter.state === "CAPTURING" || !motionTracker.isStill(0.032))
                     : (jCheck.matched || (isPinkyUpShape(latestLandmarks) && !motionTracker.isStill(0.04)));
@@ -1969,7 +1978,9 @@
                 hintEl.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Panduan Isyarat J (Dinamik):</strong> Lukis bentuk cangkuk "J" di udara menggunakan jari kelengkeng.';
             } else if (label && !isHandOnlyLabel(label) && enableFaceAi) {
                 hintEl.style.display = "block";
-                hintEl.innerHTML = '<i class="fa-solid fa-face-smile"></i> <strong>Mod Hibrid Tangan + Wajah (78 ciri):</strong> Pastikan wajah kelihatan dalam kamera supaya kedudukan tangan pada zon muka &amp; ekspresi BIM turut dirakam.';
+                hintEl.innerHTML = studioCameraMode === "dynamic"
+                    ? '<i class="fa-solid fa-face-smile"></i> <strong>Mod Dinamik Multimodal (146 ciri):</strong> Pastikan 2 tangan, bahu &amp; wajah kelihatan jelas supaya konteks lengkap dirakam.'
+                    : '<i class="fa-solid fa-face-smile"></i> <strong>Mod Hibrid Tangan + Wajah (78 ciri):</strong> Pastikan wajah kelihatan dalam kamera supaya kedudukan tangan pada zon muka &amp; ekspresi BIM turut dirakam.';
             } else {
                 hintEl.style.display = "none";
             }
@@ -2027,7 +2038,8 @@
             allHandsLandmarks,
             allHandsHandednesses,
             useFace ? latestFaceContext : null,
-            latestPoseContext
+            latestPoseContext,
+            prevPrimaryWristForVec
         );
     }
 
@@ -2358,7 +2370,6 @@
         if (!resp.ok) throw new Error("Gagal memuatkan dataset (" + resp.status + ").");
         const data = await resp.json();
         classifier.load(data.samples || []);
-        seqClassifier.load(data.sequences || []);
         dynamicEngine.setTemplates(data.sequences || []);
         classifierStale = false;
         $("test-info").textContent = `${classifier.size} sampel statik (${classifier.labels.length} label), ${dynamicEngine.size} klip gerakan DTW (${dynamicEngine.templateLabels.join(", ") || "tiada"})`;
@@ -2372,7 +2383,6 @@
                 return;
             }
             smoother.reset();
-            seqBuffer.reset();
             segmenter.reset();
             lastDynamicTestMatch = { label: null, text: "", pct: "0%", time: 0 };
             testing = true;
@@ -2452,7 +2462,7 @@
                 } else {
                     lastDynamicTestMatch = {
                         label: evalRes.label || "✖",
-                        text: `${conf}% (${evalRes.hint})`,
+                        text: `${conf}% (Tidak Sepadan)`,
                         pct: `${conf}%`,
                         time: nowMs,
                     };

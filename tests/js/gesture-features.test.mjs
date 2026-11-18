@@ -62,6 +62,17 @@ test("selectHandsOrder consistently orders Right hand as primary when 2 hands ex
     assert.equal(single.primaryIdx, 0);
     assert.strictEqual(single.primary, leftHand);
     assert.equal(single.secondary, null);
+
+    // Ambiguous duplicate handedness (e.g. crossing hands both labeled Left) falls back to prevPrimaryWrist continuity
+    const prevRightWrist = rightHand[0];
+    const continuous = selectHandsOrder(
+        [leftHand, rightHand],
+        [[{ categoryName: "Left" }], [{ categoryName: "Left" }]],
+        "Right",
+        prevRightWrist
+    );
+    assert.equal(continuous.primaryIdx, 1);
+    assert.strictEqual(continuous.primary, rightHand);
 });
 
 test("buildMultimodalVector outputs clean 146-dim vector for pose-only, 2-hand, and fallback modes", () => {

@@ -221,15 +221,17 @@
                 <video id="webcam" class="camera-video" autoplay muted playsinline style="display: none;"></video>
                 <canvas id="output_canvas" class="camera-canvas"></canvas>
 
-                <div id="face-hud-pill" class="face-hud-pill">
-                    <span>😊 Wajah: Memuat...</span>
-                </div>
-
-                @if(!$sign->is_static)
-                    <div id="dynamic-mode-pill" class="face-hud-pill" style="left: auto; right: 10px; background: rgba(2, 132, 199, 0.88); display: inline-flex;">
-                        <span>🎬 Dinamik: Memuat AI...</span>
+                <div style="position: absolute; top: 10px; left: 10px; right: 10px; z-index: 3; display: flex; justify-content: space-between; align-items: flex-start; gap: 0.4rem; flex-wrap: wrap; pointer-events: none;">
+                    <div id="face-hud-pill" class="face-hud-pill" style="position: static;">
+                        <span>😊 Wajah: Memuat...</span>
                     </div>
-                @endif
+
+                    @if(!$sign->is_static)
+                        <div id="dynamic-mode-pill" class="face-hud-pill" style="position: static; margin-left: auto; background: rgba(2, 132, 199, 0.88); display: inline-flex;">
+                            <span>🎬 Dinamik: Memuat AI...</span>
+                        </div>
+                    @endif
+                </div>
 
                 <div id="camera-placeholder" style="text-align: center; padding: 2rem; color: #fff; position: relative; z-index: 2;">
                     <div style="font-size: 3rem; margin-bottom: 0.5rem; color: var(--secondary);">📷</div>
@@ -301,8 +303,6 @@
         KnnClassifier,
         PredictionSmoother,
         HandMotionTracker,
-        SequenceClassifier,
-        SequenceBuffer,
         MotionSegmenter,
         DynamicGestureEngine
     } from "{{ asset('js/gesture-ai.js') }}";
@@ -325,6 +325,7 @@
     let latestFaceContext = null;
     let latestPoseLandmarks = null;
     let latestPoseContext = null;
+    let lastPrimaryWrist = null;
     let faceFrameTick = 0;
     let auxFrameTick = 0;
     let lastHandTs = -1;
@@ -353,19 +354,28 @@
     const isStaticSign = {{ $sign->is_static ? 'true' : 'false' }};
     let isMastered = {{ $progress->mastered ? 'true' : 'false' }};
     let consecutiveMatches = 0;
-    let lastDynamicMatchTime = 0;
-    let lastDynamicConf = 0;
     let lastDynFeedbackUntil = 0;
 
     const knn = new KnnClassifier(5);
     const smoother = new PredictionSmoother(5);
     const motionTracker = new HandMotionTracker(45);
-    const seqClassifier = new SequenceClassifier(30);
-    const seqBuffer = new SequenceBuffer(45);
     const segmenter = new MotionSegmenter();
-    const dynamicEngine = new DynamicGestureEngine();
+    const dynamicEngine = new DynamicGestureEngine({ audience: "student" });
     let mlReady = false;
     let dynamicEvalModeLabel = "Menyemak mod AI...";
+
+    function setDynamicBannerRich(prefixText, word, suffixText) {
+        if (!dynamicBannerText) return;
+        const nodes = [];
+        if (prefixText) nodes.push(document.createTextNode(prefixText));
+        if (word) {
+            const strongEl = document.createElement("strong");
+            strongEl.textContent = word;
+            nodes.push(strongEl);
+        }
+        if (suffixText) nodes.push(document.createTextNode(suffixText));
+        dynamicBannerText.replaceChildren(...nodes);
+    }
 
     function refreshDynamicModeIndicators() {
         if (isStaticSign) return;
@@ -374,15 +384,16 @@
 
         if (targetSign === "J" || targetSign === "Z") {
             dynamicEvalModeLabel = `✨ Penjejak ${targetSign}`;
+            setDynamicBannerRich("Isyarat Dinamik: Lukis bentuk ", targetSign, " di udara mengikut panduan lalu berhenti sekejap.");
         } else if (hasDtw) {
             dynamicEvalModeLabel = "🎬 Mod DTW Aktif";
+            setDynamicBannerRich("Isyarat Dinamik (DTW Aktif): Tiru gerakan tangan ", signWord, " mengikut video panduan lalu berhenti sekejap.");
         } else if (effRule.hasConstraint) {
             dynamicEvalModeLabel = "😊 Mod Peraturan Wajah";
+            setDynamicBannerRich("Isyarat Dinamik (Zon/Ekspresi Wajah): Lakukan gerakan ", signWord, " dengan AI Wajah aktif lalu berhenti sekejap.");
         } else {
             dynamicEvalModeLabel = "🪞 Mod Cermin (Klip AI belum dirakam)";
-            if (dynamicBannerText) {
-                dynamicBannerText.innerHTML = `<strong>Mod Cermin (Klip AI belum dirakam):</strong> Isyarat <strong>${signWord}</strong> belum mempunyai templat DTW. Gunakan video panduan untuk latihan kendiri atau tandakan selesai secara manual.`;
-            }
+            setDynamicBannerRich("Mod Cermin (Klip AI belum dirakam): Isyarat ", signWord, " belum mempunyai templat DTW. Teruskan berlatih ikut video panduan atau klik butang selesai di bawah.");
         }
 
         if (dynamicModePill) {
@@ -411,10 +422,9 @@
                 const data = await resp.json();
                 knn.load(data.samples || []);
                 if (data.sequences) {
-                    seqClassifier.load(data.sequences);
                     dynamicEngine.setTemplates(data.sequences);
                 }
-                mlReady = knn.labels.includes(targetSign) || dynamicEngine.templateLabels.includes(targetSign);
+                mlReady = knn.labels.includes(targetSign) || dynamicEngine.templateLabels.map(l => String(l).trim().toUpperCase()).includes(targetSign);
                 if (!isStaticSign) {
                     refreshDynamicModeIndicators();
                 } else if (mlReady && badge && !webcamRunning) {
@@ -653,11 +663,6 @@
                 feedbackOverlay.style.display = "block";
             }
 
-            motionTracker.reset();
-            seqBuffer.reset();
-            smoother.reset();
-            consecutiveMatches = 0;
-            lastVideoTime = -1;
             webcamRunning = true;
 
             window.Kiko?.say(
@@ -668,8 +673,8 @@
 
             segmenter.reset();
             motionTracker.reset();
-            seqBuffer.reset();
             smoother.reset();
+            lastPrimaryWrist = null;
             consecutiveMatches = 0;
             lastDynFeedbackUntil = 0;
             lastVideoTime = -1;
@@ -732,9 +737,9 @@
         latestFaceContext = null;
         latestPoseLandmarks = null;
         latestPoseContext = null;
+        lastPrimaryWrist = null;
         segmenter.reset();
         motionTracker.reset();
-        seqBuffer.reset();
         lastDynFeedbackUntil = 0;
         if (activeStream) {
             activeStream.getTracks().forEach(track => track.stop());
@@ -768,13 +773,17 @@
             if (enableFaceAi) {
                 if (webcamRunning && !faceLandmarker) initFaceMediaPipe();
                 if (faceHudPill && webcamRunning) faceHudPill.style.display = "inline-flex";
-                if (badge && webcamRunning && handLandmarker) badge.innerText = "Mengimbas Tangan + Wajah 🟢";
+                if (badge && webcamRunning && handLandmarker) {
+                    badge.innerText = isStaticSign ? "Mengimbas Tangan + Wajah 🟢" : "Dinamik: 2 Tangan + Bahu + Wajah 🟢";
+                }
             } else {
                 latestFaceLandmarks = null;
                 latestFaceBlendshapes = null;
                 latestFaceContext = null;
                 if (faceHudPill) faceHudPill.style.display = "none";
-                if (badge && webcamRunning && handLandmarker) badge.innerText = "Sedang Mengimbas Tangan 🟢";
+                if (badge && webcamRunning && handLandmarker) {
+                    badge.innerText = isStaticSign ? "Sedang Mengimbas Tangan 🟢" : "Dinamik: 2 Tangan + Bahu 🟢";
+                }
             }
         });
     }
@@ -853,7 +862,9 @@
             const handsLm = (results && results.landmarks && results.landmarks.length > 0)
                 ? results.landmarks
                 : [];
-            const { primary: landmarks } = selectHandsOrder(handsLm, results?.handednesses || null, "Right");
+            const { primary: landmarks } = selectHandsOrder(handsLm, results?.handednesses || null, "Right", lastPrimaryWrist);
+            const prevWristForVec = lastPrimaryWrist;
+            lastPrimaryWrist = landmarks?.[0] ? { x: landmarks[0].x, y: landmarks[0].y } : null;
 
             latestPoseContext = (!isStaticSign && latestPoseLandmarks)
                 ? extractPoseContext(latestPoseLandmarks)
@@ -931,10 +942,10 @@
                         handsLm,
                         results?.handednesses || null,
                         enableFaceAi ? latestFaceContext : null,
-                        latestPoseContext
+                        latestPoseContext,
+                        prevWristForVec
                     )
                     : null;
-                if (frameVec146) seqBuffer.push(frameVec146);
 
                 const segRes = segmenter.pushFrame({
                     frameVec: frameVec146,
@@ -1004,7 +1015,6 @@
             } else if (landmarks) {
                 const featVec = buildFeatureVector(landmarks, enableFaceAi ? latestFaceContext : null);
                 motionTracker.push(landmarks);
-                seqBuffer.push(featVec);
 
                 // Evaluate static BIM gesture (Hand + Face Hybrid)
                 const evalResult = evaluateGesture(landmarks, targetSign);
@@ -1097,132 +1107,8 @@
             : null;
 
         // =====================================================================
-        // PIPELINE A: DEDICATED DYNAMIC CAMERA MODE (!isStaticSign)
-        // Strictly evaluates DTW sequence clips & motion trajectories (J, Z, BIM)
-        // Never falls back to Static KNN!
-        // =====================================================================
-        if (!isStaticSign) {
-            if (target === 'J') {
-                const isPinky = isPinkyUpShape(lm);
-                if (isPinky) {
-                    const jCheck = motionTracker ? motionTracker.detectJMotion() : { matched: false };
-                    if (jCheck && jCheck.matched) {
-                        return {
-                            matched: true,
-                            confidence: jCheck.confidence || 96,
-                            hint: "Hebat! Gerakan cangkuk J dikesan dengan sempurna! ⭐"
-                        };
-                    }
-                    return {
-                        matched: false,
-                        confidence: 70,
-                        hint: "Bagus! Sekarang lukis bentuk cangkuk J di udara (turun ke bawah lalu lengkung ke atas)."
-                    };
-                }
-                return {
-                    matched: false,
-                    confidence: 30,
-                    hint: "Tegakkan jari kelengkeng dahulu, kemudian buat pergerakan cangkuk J."
-                };
-            }
-
-            if (target === 'Z') {
-                const isIndex = isIndexPointingShape(lm) || (indexUp && !middleUp && !ringUp && !pinkyUp);
-                if (isIndex) {
-                    const zCheck = motionTracker ? motionTracker.detectZMotion() : { matched: false };
-                    if (zCheck && zCheck.matched) {
-                        return {
-                            matched: true,
-                            confidence: zCheck.confidence || 95,
-                            hint: "Hebat! Gerakan zig-zag Z dikesan dengan sempurna! ⭐"
-                        };
-                    }
-                    return {
-                        matched: false,
-                        confidence: 68,
-                        hint: "Bagus! Sekarang lukis bentuk 'Z' di udara dengan jari telunjuk."
-                    };
-                }
-                return {
-                    matched: false,
-                    confidence: 30,
-                    hint: "Tegakkan jari telunjuk dahulu, kemudian lukis bentuk Z di udara."
-                };
-            }
-
-            if (faceBoost?.strictBlocked) {
-                return {
-                    matched: false,
-                    confidence: 45,
-                    hint: faceBoost.hintNeed || ("Dekatkan tangan ke kawasan wajah yang betul untuk " + signWord + "...")
-                };
-            }
-
-            // Dynamic Sequence DTW Classifier (if trained 30-frame sequence clips exist for this sign)
-            if (seqClassifier.size > 0 && seqClassifier.labels.includes(target)) {
-                const nowMs = performance.now();
-                if (seqBuffer.length >= 10 && !motionTracker.isStill(0.03)) {
-                    const seqPred = seqClassifier.predict(seqBuffer.getFrames(), activeFaceCtx);
-                    if (seqPred.label === target && seqPred.confidence >= 52) {
-                        lastDynamicMatchTime = nowMs;
-                        lastDynamicConf = seqPred.confidence;
-                        return {
-                            matched: true,
-                            confidence: seqPred.confidence,
-                            faceHintOk: faceBoost?.hintOk || null,
-                            hint: faceBoost?.hintOk || ("Hebat! Kamera Dinamik DTW mengesahkan gerakan " + signWord + " (" + seqPred.confidence + "%).")
-                        };
-                    }
-                    if (nowMs - lastDynamicMatchTime < 750) {
-                        return {
-                            matched: true,
-                            confidence: lastDynamicConf,
-                            faceHintOk: faceBoost?.hintOk || null,
-                            hint: faceBoost?.hintOk || ("Hebat! Gerakan " + signWord + " dikesan!")
-                        };
-                    }
-                    return {
-                        matched: false,
-                        confidence: Math.max(25, seqPred.label === target ? seqPred.confidence : 35),
-                        hint: faceBoost?.hintNeed || ("Teruskan pergerakan isyarat " + signWord + " mengikut video panduan...")
-                    };
-                }
-                if (nowMs - lastDynamicMatchTime < 750) {
-                    return {
-                        matched: true,
-                        confidence: lastDynamicConf,
-                        faceHintOk: faceBoost?.hintOk || null,
-                        hint: faceBoost?.hintOk || ("Hebat! Gerakan " + signWord + " dikesan!")
-                    };
-                }
-                return {
-                    matched: false,
-                    confidence: 25,
-                    hint: faceBoost?.hintNeed || ("Gerakkan tangan anda mengikut video untuk isyarat " + signWord + "...")
-                };
-            }
-
-            // Heuristic motion fallback for dynamic signs without custom DTW clips yet
-            if (motionTracker && !motionTracker.isStill(0.035)) {
-                const dynConf = Math.min(98, 86 + (faceBoost?.bonus || 0));
-                return {
-                    matched: true,
-                    confidence: dynConf,
-                    faceHintOk: faceBoost?.hintOk || null,
-                    hint: faceBoost?.hintOk || "Bagus! Pergerakan tangan dikesan..."
-                };
-            }
-            return {
-                matched: false,
-                confidence: 45,
-                hint: faceBoost?.hintNeed || ("Tiru pergerakan tangan bagi '" + signWord + "' mengikut video panduan...")
-            };
-        }
-
-        // =====================================================================
-        // PIPELINE B: DEDICATED STATIC CAMERA MODE (isStaticSign)
-        // Strictly evaluates static handshapes when held steady.
-        // Never triggers DTW sequences!
+        // DEDICATED STATIC CAMERA MODE (isStaticSign)
+        // Evaluates static handshapes when held steady.
         // =====================================================================
         if (motionTracker && !motionTracker.isStill(0.085)) {
             return {

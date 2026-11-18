@@ -63,6 +63,8 @@ class DynamicViewsSmokeTest extends TestCase
         $dynResp->assertSee('buildMultimodalVector', false);
         $dynResp->assertSee('drawPoseAnchors', false);
         $dynResp->assertSee('dynamic-mode-pill', false);
+        $dynResp->assertSee('audience: "student"', false);
+        $dynResp->assertDontSee('dynamicBannerText.innerHTML =', false);
 
         $staticResp = $this->actingAs($student, 'student')
             ->get(route('learn.sign', [$cat, $staticSign]));
