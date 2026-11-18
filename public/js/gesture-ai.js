@@ -905,6 +905,143 @@ export class PredictionSmoother {
  * HandMotionTracker: Tracks trajectory of key landmarks over time
  * to differentiate static signs (like 'I', 'D') from dynamic motion signs (like 'J', 'Z', and BIM dynamic signs).
  */
+function toTrackPoint(item) {
+    if (!item) return null;
+    if (Array.isArray(item) && item.length >= 21) {
+        return {
+            pinky: { x: item[20].x, y: item[20].y },
+            wrist: { x: item[0].x, y: item[0].y },
+            index: { x: item[8].x, y: item[8].y },
+            palm: { x: item[9].x, y: item[9].y },
+        };
+    }
+    if (item.pinky && item.wrist && item.index && item.palm) {
+        return item;
+    }
+    return null;
+}
+
+function computeSpanMagnitude(trackPts) {
+    if (!trackPts || trackPts.length < 3) return 0;
+    const keys = ["pinky", "index", "palm", "wrist"];
+    let maxSpan = 0;
+
+    for (const k of keys) {
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const p of trackPts) {
+            const pt = p[k];
+            if (!pt) continue;
+            if (pt.x < minX) minX = pt.x;
+            if (pt.x > maxX) maxX = pt.x;
+            if (pt.y < minY) minY = pt.y;
+            if (pt.y > maxY) maxY = pt.y;
+        }
+        const span = Math.hypot(maxX - minX, maxY - minY);
+        if (span > maxSpan) maxSpan = span;
+    }
+    return maxSpan;
+}
+
+/**
+ * Pure deterministic trajectory analyzer for dynamic letter 'J' (pinky downward stroke + hook).
+ */
+export function analyzeJTrajectory(landmarksList) {
+    const trackPts = (landmarksList || []).map(toTrackPoint).filter(Boolean);
+    if (trackPts.length < 6) return { matched: false, confidence: 0 };
+
+    const pts = trackPts.map(h => h.pinky);
+    const n = pts.length;
+
+    let maxY = -Infinity;
+    let bottomIdx = -1;
+    for (let i = 0; i < n; i++) {
+        if (pts[i].y > maxY) {
+            maxY = pts[i].y;
+            bottomIdx = i;
+        }
+    }
+    if (bottomIdx < 2) return { matched: false, confidence: 0 };
+
+    let minYBefore = Infinity;
+    for (let i = 0; i < bottomIdx; i++) {
+        if (pts[i].y < minYBefore) minYBefore = pts[i].y;
+    }
+
+    const downwardDrop = maxY - minYBefore;
+    if (downwardDrop < 0.03) return { matched: false, confidence: 0 };
+
+    let minYAfter = Infinity;
+    for (let i = bottomIdx + 1; i < n; i++) {
+        if (pts[i].y < minYAfter) minYAfter = pts[i].y;
+    }
+    const upwardHook = minYAfter !== Infinity ? (maxY - minYAfter) : 0;
+
+    let maxHorizontalSweep = 0;
+    const bottomX = pts[bottomIdx].x;
+    for (let i = Math.max(0, bottomIdx - 3); i < n; i++) {
+        const dx = Math.abs(pts[i].x - bottomX);
+        if (dx > maxHorizontalSweep) maxHorizontalSweep = dx;
+    }
+
+    const totalMovement = computeSpanMagnitude(trackPts.slice(-Math.min(24, trackPts.length)));
+    const hasHook = (upwardHook >= 0.012) ||
+                    (maxHorizontalSweep >= 0.02) ||
+                    (downwardDrop >= 0.05 && (upwardHook >= 0.008 || maxHorizontalSweep >= 0.012));
+
+    if (hasHook && totalMovement >= 0.045) {
+        const score = Math.min(98, Math.round(78 + (downwardDrop + upwardHook + maxHorizontalSweep) * 130));
+        return { matched: true, confidence: score };
+    }
+
+    return { matched: false, confidence: 0 };
+}
+
+/**
+ * Pure deterministic trajectory analyzer for dynamic letter 'Z' (index zig-zag trace).
+ */
+export function analyzeZTrajectory(landmarksList) {
+    const trackPts = (landmarksList || []).map(toTrackPoint).filter(Boolean);
+    if (trackPts.length < 8) return { matched: false, confidence: 0 };
+
+    const pts = trackPts.map(h => h.index);
+    const n = pts.length;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of pts) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+    }
+
+    const width = maxX - minX;
+    const height = maxY - minY;
+    if (width < 0.055 || height < 0.04) {
+        return { matched: false, confidence: 0 };
+    }
+
+    let dirChanges = 0;
+    let lastDir = 0;
+    for (let i = 2; i < n; i++) {
+        const dx = pts[i].x - pts[i - 2].x;
+        if (Math.abs(dx) > 0.014) {
+            const dir = dx > 0 ? 1 : -1;
+            if (lastDir !== 0 && dir !== lastDir) {
+                dirChanges++;
+            }
+            lastDir = dir;
+        }
+    }
+
+    const netDownward = pts[n - 1].y - pts[0].y;
+    if (dirChanges >= 1 && netDownward >= 0.025) {
+        const score = Math.min(98, Math.round(80 + (width + height) * 85));
+        return { matched: true, confidence: score };
+    }
+
+    return { matched: false, confidence: 0 };
+}
+
 export class HandMotionTracker {
     constructor(bufferSize = 45) {
         this.bufferSize = bufferSize;
@@ -942,23 +1079,7 @@ export class HandMotionTracker {
     getMovementMagnitude(frames = 15) {
         if (this.history.length < 3) return 0;
         const recent = this.history.slice(-Math.min(frames, this.history.length));
-        const keys = ["pinky", "index", "palm", "wrist"];
-        let maxSpan = 0;
-
-        for (const k of keys) {
-            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-            for (const p of recent) {
-                const pt = p[k];
-                if (!pt) continue;
-                if (pt.x < minX) minX = pt.x;
-                if (pt.x > maxX) maxX = pt.x;
-                if (pt.y < minY) minY = pt.y;
-                if (pt.y > maxY) maxY = pt.y;
-            }
-            const span = Math.hypot(maxX - minX, maxY - minY);
-            if (span > maxSpan) maxSpan = span;
-        }
-        return maxSpan;
+        return computeSpanMagnitude(recent);
     }
 
     isStill(threshold = 0.05) {
@@ -971,55 +1092,11 @@ export class HandMotionTracker {
         if (now - this.lastJDetection < 1500) {
             return { matched: true, confidence: 95 };
         }
-        if (this.history.length < 6) return { matched: false, confidence: 0 };
-
-        const pts = this.history.map(h => h.pinky);
-        const n = pts.length;
-
-        let maxY = -Infinity;
-        let bottomIdx = -1;
-        for (let i = 0; i < n; i++) {
-            if (pts[i].y > maxY) {
-                maxY = pts[i].y;
-                bottomIdx = i;
-            }
-        }
-
-        if (bottomIdx < 2) return { matched: false, confidence: 0 };
-
-        let minYBefore = Infinity;
-        for (let i = 0; i < bottomIdx; i++) {
-            if (pts[i].y < minYBefore) minYBefore = pts[i].y;
-        }
-
-        const downwardDrop = maxY - minYBefore;
-        if (downwardDrop < 0.03) return { matched: false, confidence: 0 };
-
-        let minYAfter = Infinity;
-        for (let i = bottomIdx + 1; i < n; i++) {
-            if (pts[i].y < minYAfter) minYAfter = pts[i].y;
-        }
-        const upwardHook = minYAfter !== Infinity ? (maxY - minYAfter) : 0;
-
-        let maxHorizontalSweep = 0;
-        const bottomX = pts[bottomIdx].x;
-        for (let i = Math.max(0, bottomIdx - 3); i < n; i++) {
-            const dx = Math.abs(pts[i].x - bottomX);
-            if (dx > maxHorizontalSweep) maxHorizontalSweep = dx;
-        }
-
-        const totalMovement = this.getMovementMagnitude(20);
-        const hasHook = (upwardHook >= 0.012) ||
-                        (maxHorizontalSweep >= 0.02) ||
-                        (downwardDrop >= 0.05 && (upwardHook >= 0.008 || maxHorizontalSweep >= 0.012));
-
-        if (hasHook && totalMovement >= 0.045) {
+        const res = analyzeJTrajectory(this.history);
+        if (res.matched) {
             this.lastJDetection = now;
-            const score = Math.min(98, Math.round(78 + (downwardDrop + upwardHook + maxHorizontalSweep) * 130));
-            return { matched: true, confidence: score };
         }
-
-        return { matched: false, confidence: 0 };
+        return res;
     }
 
     /**
@@ -1030,47 +1107,11 @@ export class HandMotionTracker {
         if (now - this.lastZDetection < 1500) {
             return { matched: true, confidence: 95 };
         }
-        if (this.history.length < 8) return { matched: false, confidence: 0 };
-
-        const pts = this.history.map(h => h.index);
-        const n = pts.length;
-
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        for (const p of pts) {
-            if (p.x < minX) minX = p.x;
-            if (p.x > maxX) maxX = p.x;
-            if (p.y < minY) minY = p.y;
-            if (p.y > maxY) maxY = p.y;
-        }
-
-        const width = maxX - minX;
-        const height = maxY - minY;
-        if (width < 0.055 || height < 0.04) {
-            return { matched: false, confidence: 0 };
-        }
-
-        // Count horizontal direction reversals (Z has at least 1 reversal: horizontal -> diagonal back -> horizontal)
-        let dirChanges = 0;
-        let lastDir = 0;
-        for (let i = 2; i < n; i++) {
-            const dx = pts[i].x - pts[i - 2].x;
-            if (Math.abs(dx) > 0.014) {
-                const dir = dx > 0 ? 1 : -1;
-                if (lastDir !== 0 && dir !== lastDir) {
-                    dirChanges++;
-                }
-                lastDir = dir;
-            }
-        }
-
-        const netDownward = pts[n - 1].y - pts[0].y;
-        if (dirChanges >= 1 && netDownward >= 0.025) {
+        const res = analyzeZTrajectory(this.history);
+        if (res.matched) {
             this.lastZDetection = now;
-            const score = Math.min(98, Math.round(80 + (width + height) * 85));
-            return { matched: true, confidence: score };
         }
-
-        return { matched: false, confidence: 0 };
+        return res;
     }
 
     getTrail(joint = "auto") {
@@ -1507,5 +1548,581 @@ export class SequenceBuffer {
 
     reset() {
         this.buffer = [];
+    }
+}
+
+function computeFrameMotionScore(prevItem, currItem) {
+    if (!prevItem || !currItem || !prevItem.frameVec || !currItem.frameVec) return 0;
+    const a = prevItem.frameVec;
+    const b = currItem.frameVec;
+    const minLen = Math.min(a.length, b.length);
+
+    let hand1Sq = 0;
+    const h1Lim = Math.min(minLen, HAND_FEATURE_DIM);
+    for (let d = 0; d < h1Lim; d++) {
+        const diff = b[d] - a[d];
+        hand1Sq += diff * diff;
+    }
+    const hand1RMS = Math.sqrt(hand1Sq / 21);
+
+    let hand2RMS = 0;
+    if (minLen >= 145 && a[141] >= 0.5 && b[141] >= 0.5) {
+        let hand2Sq = 0;
+        for (let d = 78; d < 141; d++) {
+            const diff = b[d] - a[d];
+            hand2Sq += diff * diff;
+        }
+        const relDelta = Math.hypot(b[142] - a[142], b[143] - a[143]) * 2.0;
+        hand2RMS = Math.max(Math.sqrt(hand2Sq / 21), relDelta);
+    }
+
+    let trajMag = 0;
+    if (minLen >= 78 && a[77] >= 0.2 && b[77] >= 0.2) {
+        const idxDelta = Math.hypot(b[63] - a[63], b[64] - a[64]);
+        const palmDelta = Math.hypot(b[65] - a[65], b[66] - a[66]);
+        trajMag = Math.max(idxDelta, palmDelta) * 2.6;
+    }
+
+    let screenHandMag = 0;
+    const hA = prevItem.primaryHand;
+    const hB = currItem.primaryHand;
+    if (hA && hB && hA.length >= 21 && hB.length >= 21) {
+        const watchJoints = [0, 8, 9, 20];
+        let maxD = 0;
+        for (const j of watchJoints) {
+            const d = Math.hypot(hB[j].x - hA[j].x, hB[j].y - hA[j].y);
+            if (d > maxD) maxD = d;
+        }
+        screenHandMag = maxD * 3.0;
+    }
+
+    return Math.max(hand1RMS, hand2RMS, trajMag, screenHandMag);
+}
+
+/**
+ * MotionSegmenter: Auto Mula–Gerak–Tamat gesture boundary state machine.
+ * Captures pre-roll frames, tracks active motion stroke, and emits each completed
+ * gesture clip ONCE after a short natural pause (or max clip cap).
+ */
+export class MotionSegmenter {
+    constructor(opts = {}) {
+        this.prerollFrames = opts.prerollFrames ?? 6;
+        this.minActiveFrames = opts.minActiveFrames ?? 8;
+        this.pauseMs = opts.pauseMs ?? 280;
+        this.maxClipMs = opts.maxClipMs ?? 2400;
+        this.cooldownMs = opts.cooldownMs ?? 450;
+        this.startMotionThresh = opts.startMotionThresh ?? 0.026;
+        this.sustainMotionThresh = opts.sustainMotionThresh ?? 0.018;
+        this.reset();
+    }
+
+    reset() {
+        this.state = "IDLE";
+        this.preroll = [];
+        this.clip = [];
+        this.prevItem = null;
+        this.captureStartMs = null;
+        this.lastMovingMs = null;
+        this.cooldownUntilMs = 0;
+        this.activeFrameCount = 0;
+    }
+
+    _finishCapture(now) {
+        const elapsedMs = this.captureStartMs !== null ? (now - this.captureStartMs) : 0;
+        const captured = this.clip;
+        const activeCount = this.activeFrameCount;
+
+        this.clip = [];
+        this.activeFrameCount = 0;
+        this.captureStartMs = null;
+        this.lastMovingMs = null;
+
+        if (activeCount >= this.minActiveFrames) {
+            this.state = "COOLDOWN";
+            this.cooldownUntilMs = now + this.cooldownMs;
+            this.preroll = [];
+            return {
+                state: this.state,
+                event: "completed",
+                clip: captured.map(item => item.frameVec),
+                handsHistory: captured.map(item => item.primaryHand).filter(Boolean),
+                faceHistory: captured.map(item => item.faceContext).filter(Boolean),
+                durationMs: elapsedMs,
+            };
+        }
+
+        this.state = "IDLE";
+        const lastItem = captured.length > 0 ? captured[captured.length - 1] : null;
+        this.preroll = lastItem ? [lastItem] : [];
+        return {
+            state: this.state,
+            event: "too_short",
+            clip: null,
+            handsHistory: null,
+            faceHistory: null,
+            durationMs: elapsedMs,
+        };
+    }
+
+    pushFrame({ frameVec = null, handsLm = null, primaryHand = null, faceContext = null, timestampMs } = {}) {
+        const now = Number.isFinite(timestampMs)
+            ? timestampMs
+            : (typeof performance !== "undefined" ? performance.now() : Date.now());
+
+        if (!frameVec) {
+            if (this.state === "CAPTURING") {
+                const pausedMs = this.lastMovingMs !== null ? (now - this.lastMovingMs) : 0;
+                const elapsedMs = this.captureStartMs !== null ? (now - this.captureStartMs) : 0;
+                if (pausedMs >= this.pauseMs || elapsedMs >= this.maxClipMs) {
+                    return this._finishCapture(now);
+                }
+                return {
+                    state: this.state,
+                    event: null,
+                    clip: null,
+                    handsHistory: null,
+                    faceHistory: null,
+                    durationMs: elapsedMs,
+                };
+            }
+            if (this.state === "COOLDOWN" && now >= this.cooldownUntilMs) {
+                this.state = "IDLE";
+                this.prevItem = null;
+                this.preroll = [];
+            }
+            return {
+                state: this.state,
+                event: null,
+                clip: null,
+                handsHistory: null,
+                faceHistory: null,
+                durationMs: 0,
+            };
+        }
+
+        const resolvedPrimary = primaryHand ||
+            (Array.isArray(handsLm) && handsLm.length > 0 ? selectHandsOrder(handsLm).primary : null);
+
+        const currentItem = {
+            frameVec,
+            primaryHand: resolvedPrimary,
+            faceContext: faceContext || null,
+            timestampMs: now,
+        };
+
+        if (this.state === "COOLDOWN") {
+            this.prevItem = currentItem;
+            if (now >= this.cooldownUntilMs) {
+                this.state = "IDLE";
+                this.preroll = [currentItem];
+            }
+            return {
+                state: this.state,
+                event: null,
+                clip: null,
+                handsHistory: null,
+                faceHistory: null,
+                durationMs: 0,
+            };
+        }
+
+        const motion = computeFrameMotionScore(this.prevItem, currentItem);
+
+        if (this.state === "IDLE") {
+            if (this.prevItem && motion >= this.startMotionThresh) {
+                this.state = "CAPTURING";
+                this.clip = [...this.preroll, currentItem];
+                this.preroll = [];
+                this.captureStartMs = now;
+                this.lastMovingMs = now;
+                this.activeFrameCount = 1;
+                this.prevItem = currentItem;
+                return {
+                    state: "CAPTURING",
+                    event: "started",
+                    clip: null,
+                    handsHistory: null,
+                    faceHistory: null,
+                    durationMs: 0,
+                };
+            }
+
+            this.preroll.push(currentItem);
+            if (this.preroll.length > this.prerollFrames) {
+                this.preroll.shift();
+            }
+            this.prevItem = currentItem;
+            return {
+                state: "IDLE",
+                event: null,
+                clip: null,
+                handsHistory: null,
+                faceHistory: null,
+                durationMs: 0,
+            };
+        }
+
+        // CAPTURING state
+        this.clip.push(currentItem);
+        const isMoving = motion >= this.sustainMotionThresh;
+        if (isMoving) {
+            this.activeFrameCount += 1;
+            this.lastMovingMs = now;
+        }
+        this.prevItem = currentItem;
+
+        const elapsedMs = this.captureStartMs !== null ? (now - this.captureStartMs) : 0;
+        const pausedMs = this.lastMovingMs !== null ? (now - this.lastMovingMs) : 0;
+        if (elapsedMs >= this.maxClipMs || (!isMoving && pausedMs >= this.pauseMs)) {
+            return this._finishCapture(now);
+        }
+
+        return {
+            state: "CAPTURING",
+            event: null,
+            clip: null,
+            handsHistory: null,
+            faceHistory: null,
+            durationMs: elapsedMs,
+        };
+    }
+}
+
+function summarizeClipFaces(faceHistory) {
+    const validFaces = (faceHistory || []).filter(fc => fc && fc.hasFace);
+    if (validFaces.length === 0) {
+        return { validFaces: [], zoneCounts: {}, exprCounts: {}, peakFaceCtx: null };
+    }
+
+    const zoneCounts = {};
+    const exprCounts = {};
+    for (const fc of validFaces) {
+        if (fc.zone && fc.zone !== "bebas") {
+            zoneCounts[fc.zone] = (zoneCounts[fc.zone] || 0) + 1;
+        }
+        if (fc.expression && fc.expression !== "neutral") {
+            exprCounts[fc.expression] = (exprCounts[fc.expression] || 0) + 1;
+        }
+    }
+
+    const topZone = Object.entries(zoneCounts).sort((a, b) => b[1] - a[1])[0];
+    const topExpr = Object.entries(exprCounts).sort((a, b) => b[1] - a[1])[0];
+    const midFace = validFaces[Math.floor(validFaces.length / 2)];
+
+    const peakFaceCtx = {
+        ...midFace,
+        hasFace: true,
+        zone: (topZone && topZone[1] >= 2) ? topZone[0] : (midFace.zone || "bebas"),
+        expression: (topExpr && topExpr[1] >= 2) ? topExpr[0] : (midFace.expression || "neutral"),
+    };
+
+    return { validFaces, zoneCounts, exprCounts, peakFaceCtx };
+}
+
+/**
+ * DynamicGestureEngine: Unified clip-based dynamic sign evaluator supporting:
+ * - Target-Locked mode (student practice with strict Option-A 0-clip rules + Mirror Mode)
+ * - Open-Set mode (AI Studio free-signing verification across all templates + J/Z)
+ */
+export class DynamicGestureEngine {
+    constructor(opts = {}) {
+        this.seqClassifier = new SequenceClassifier(opts.targetLength || 30);
+        this.targetDtwThreshold = opts.targetDtwThreshold ?? 55;
+        this.openSetDtwThreshold = opts.openSetDtwThreshold ?? 52;
+    }
+
+    setTemplates(sequences) {
+        this.seqClassifier.load(sequences || []);
+    }
+
+    get size() {
+        return this.seqClassifier.size;
+    }
+
+    get templateLabels() {
+        return this.seqClassifier.labels;
+    }
+
+    evaluateClip({
+        mode = "target-locked",
+        targetLabel = null,
+        clipFrames = [],
+        handsHistory = [],
+        faceHistory = [],
+        faceAiEnabled = false,
+    } = {}) {
+        const validHands = (handsHistory || []).filter(lm => Array.isArray(lm) && lm.length >= 21);
+        const { validFaces, zoneCounts, exprCounts, peakFaceCtx } = summarizeClipFaces(faceHistory);
+
+        const pinkyHits = validHands.filter(lm => isPinkyUpShape(lm)).length;
+        const indexHits = validHands.filter(lm => isIndexPointingShape(lm)).length;
+        const hasDominantPinky = validHands.length >= 6 && pinkyHits >= 3 && (pinkyHits / validHands.length) >= 0.40;
+        const hasDominantIndex = validHands.length >= 8 && indexHits >= 3 && (indexHits / validHands.length) >= 0.40;
+
+        if (mode === "open-set") {
+            if (hasDominantPinky) {
+                const jRes = analyzeJTrajectory(validHands);
+                if (jRes.matched) {
+                    return {
+                        status: "matched",
+                        matched: true,
+                        label: "J",
+                        confidence: jRes.confidence,
+                        hint: "Hebat! Gerakan cangkuk J dikesan dengan sempurna! ⭐",
+                        source: "jz",
+                    };
+                }
+            }
+            if (hasDominantIndex) {
+                const zRes = analyzeZTrajectory(validHands);
+                if (zRes.matched) {
+                    return {
+                        status: "matched",
+                        matched: true,
+                        label: "Z",
+                        confidence: zRes.confidence,
+                        hint: "Hebat! Gerakan zig-zag Z dikesan dengan sempurna! ⭐",
+                        source: "jz",
+                    };
+                }
+            }
+
+            if (this.seqClassifier.size > 0 && Array.isArray(clipFrames) && clipFrames.length >= 8) {
+                const pred = this.seqClassifier.predict(clipFrames, peakFaceCtx, null);
+                if (pred.label && pred.confidence >= this.openSetDtwThreshold) {
+                    return {
+                        status: "matched",
+                        matched: true,
+                        label: pred.label,
+                        confidence: pred.confidence,
+                        hint: `Hebat! Isyarat ${pred.label.replace(/_/g, " ")} dikesan (${pred.confidence}%).`,
+                        source: "dtw",
+                    };
+                }
+                return {
+                    status: "miss",
+                    matched: false,
+                    label: pred.label || null,
+                    confidence: pred.confidence || 0,
+                    hint: "Isyarat tidak sepadan dengan templat terlatih. Cuba ulang dengan gerakan yang jelas.",
+                    source: "dtw",
+                };
+            }
+
+            return {
+                status: "miss",
+                matched: false,
+                label: null,
+                confidence: 0,
+                hint: "Tiada templat DTW dimuatkan dan tiada J/Z dikesan.",
+                source: "dtw",
+            };
+        }
+
+        // Target-Locked mode
+        const normTarget = String(targetLabel || "").trim().toUpperCase();
+        if (!normTarget) {
+            return {
+                status: "miss",
+                matched: false,
+                label: null,
+                confidence: 0,
+                hint: "Tiada sasaran isyarat ditetapkan.",
+                source: "dtw",
+            };
+        }
+
+        const displayName = normTarget.replace(/_/g, " ");
+        const upperLabels = this.seqClassifier.labels.map(l => String(l).trim().toUpperCase());
+
+        if (normTarget === "J") {
+            if (!hasDominantPinky) {
+                return {
+                    status: "miss",
+                    matched: false,
+                    label: null,
+                    confidence: 30,
+                    hint: "Tegakkan jari kelengkeng dahulu, kemudian buat pergerakan cangkuk J.",
+                    source: "jz",
+                };
+            }
+            const jRes = analyzeJTrajectory(validHands);
+            if (jRes.matched) {
+                return {
+                    status: "matched",
+                    matched: true,
+                    label: "J",
+                    confidence: jRes.confidence,
+                    hint: "Hebat! Gerakan cangkuk J dikesan dengan sempurna! ⭐",
+                    source: "jz",
+                };
+            }
+            if (upperLabels.includes("J") && Array.isArray(clipFrames) && clipFrames.length >= 8) {
+                const jDtw = this.seqClassifier.predict(clipFrames, peakFaceCtx, "J");
+                if (jDtw.label && jDtw.confidence >= this.targetDtwThreshold) {
+                    return {
+                        status: "matched",
+                        matched: true,
+                        label: "J",
+                        confidence: jDtw.confidence,
+                        hint: "Hebat! Gerakan cangkuk J dikesan dengan baik! ⭐",
+                        source: "dtw",
+                    };
+                }
+            }
+            return {
+                status: "miss",
+                matched: false,
+                label: null,
+                confidence: 58,
+                hint: "Lukis bentuk cangkuk J di udara (turun ke bawah lalu lengkung ke atas).",
+                source: "jz",
+            };
+        }
+
+        if (normTarget === "Z") {
+            if (!hasDominantIndex) {
+                return {
+                    status: "miss",
+                    matched: false,
+                    label: null,
+                    confidence: 30,
+                    hint: "Tegakkan jari telunjuk dahulu, kemudian lukis bentuk Z di udara.",
+                    source: "jz",
+                };
+            }
+            const zRes = analyzeZTrajectory(validHands);
+            if (zRes.matched) {
+                return {
+                    status: "matched",
+                    matched: true,
+                    label: "Z",
+                    confidence: zRes.confidence,
+                    hint: "Hebat! Gerakan zig-zag Z dikesan dengan sempurna! ⭐",
+                    source: "jz",
+                };
+            }
+            if (upperLabels.includes("Z") && Array.isArray(clipFrames) && clipFrames.length >= 8) {
+                const zDtw = this.seqClassifier.predict(clipFrames, peakFaceCtx, "Z");
+                if (zDtw.label && zDtw.confidence >= this.targetDtwThreshold) {
+                    return {
+                        status: "matched",
+                        matched: true,
+                        label: "Z",
+                        confidence: zDtw.confidence,
+                        hint: "Hebat! Gerakan zig-zag Z dikesan dengan baik! ⭐",
+                        source: "dtw",
+                    };
+                }
+            }
+            return {
+                status: "miss",
+                matched: false,
+                label: null,
+                confidence: 58,
+                hint: "Lukis bentuk zig-zag 'Z' yang jelas di udara dengan jari telunjuk.",
+                source: "jz",
+            };
+        }
+
+        // DTW template check when trained sequence clips exist for targetLabel
+        if (upperLabels.includes(normTarget)) {
+            const boost = peakFaceCtx ? evaluateFaceSignBoost(normTarget, peakFaceCtx) : null;
+            const pred = this.seqClassifier.predict(clipFrames, peakFaceCtx, normTarget);
+
+            if (boost?.strictBlocked) {
+                return {
+                    status: "miss",
+                    matched: false,
+                    label: null,
+                    confidence: Math.max(30, Math.min(52, pred.confidence || 40)),
+                    hint: boost.hintNeed || `Dekatkan tangan ke zon wajah yang betul untuk ${displayName}.`,
+                    source: "dtw",
+                };
+            }
+
+            if (pred.label && pred.confidence >= this.targetDtwThreshold) {
+                return {
+                    status: "matched",
+                    matched: true,
+                    label: normTarget,
+                    confidence: pred.confidence,
+                    hint: boost?.hintOk || `Hebat! Kamera Dinamik DTW mengesahkan gerakan ${displayName} (${pred.confidence}%).`,
+                    source: "dtw",
+                };
+            }
+
+            return {
+                status: "miss",
+                matched: false,
+                label: null,
+                confidence: Math.max(25, pred.confidence || 30),
+                hint: boost?.hintNeed || `Gerakan belum sepadan dengan templat ${displayName}. Cuba ulang mengikut video panduan.`,
+                source: "dtw",
+            };
+        }
+
+        // Strict Option A fallback for 0-clip signs
+        const rule = getEffectiveFaceRule(normTarget);
+        if (!rule.hasConstraint) {
+            return {
+                status: "mirror",
+                matched: false,
+                label: null,
+                confidence: 0,
+                hint: `Mod Cermin Aktif: Isyarat ${displayName} belum mempunyai templat DTW. Latih mengikut video panduan atau rakam templat di AI Studio.`,
+                source: "mirror",
+            };
+        }
+
+        if (!faceAiEnabled || validFaces.length === 0) {
+            return {
+                status: "need_face",
+                matched: false,
+                label: null,
+                confidence: 0,
+                hint: !faceAiEnabled
+                    ? `Hidupkan AI Wajah untuk mengesahkan isyarat ${displayName}.`
+                    : `Pastikan wajah anda kelihatan jelas di kamera untuk mengesahkan isyarat ${displayName}.`,
+                source: "face-rule",
+            };
+        }
+
+        const zoneMatched = !rule.zones || rule.zones.some(z => (zoneCounts[z] || 0) >= 2);
+        const exprMatched = !rule.exprs || rule.exprs.some(e => (exprCounts[e] || 0) >= 2);
+
+        if (zoneMatched && exprMatched) {
+            let conf = 82;
+            if (rule.zones) conf += 6;
+            if (rule.exprs) conf += 6;
+            return {
+                status: "matched",
+                matched: true,
+                label: normTarget,
+                confidence: Math.min(95, conf),
+                hint: rule.hintOk || `Tepat! Pergerakan serta zon/ekspresi ${displayName} dikesan dengan baik! ⭐`,
+                source: "face-rule",
+            };
+        }
+
+        let missHint = "";
+        if (!zoneMatched && rule.hintNeed) {
+            missHint = rule.hintNeed;
+        } else if (!exprMatched && rule.hintExpr) {
+            missHint = rule.hintExpr;
+        } else if (!zoneMatched) {
+            missHint = `Letakkan tangan berhampiran zon (${rule.zones.join(" / ")}) semasa membuat isyarat ${displayName}.`;
+        } else {
+            missHint = `Tunjukkan ekspresi wajah (${rule.exprs.join(" / ")}) semasa membuat isyarat ${displayName}.`;
+        }
+
+        return {
+            status: "miss",
+            matched: false,
+            label: null,
+            confidence: (zoneMatched || exprMatched) ? 55 : 35,
+            hint: missHint,
+            source: "face-rule",
+        };
     }
 }
