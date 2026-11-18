@@ -40,7 +40,7 @@
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
                             <span style="font-size: 1.8rem;">{{ $st->avatarEmoji() }}</span>
                             <div>
-                                <div style="font-weight: 800;">{{ $st->name }}</div>
+                                <a href="{{ route('admin.students.show', $st) }}" style="font-weight: 800; color: inherit;">{{ $st->name }}</a>
                                 <div style="font-size: 0.8rem; color: var(--text-muted);">
                                     {{ $st->age ? $st->age.' tahun' : '-' }}
                                 </div>
@@ -68,6 +68,7 @@
                         {{ $st->quiz_attempts_count }} kali
                     </td>
                     <td style="padding: 1rem 1.2rem; text-align: right;">
+                        <a href="{{ route('admin.students.show', $st) }}" class="btn btn-outline btn-sm" style="padding: 0.3rem 0.6rem; margin-right: 0.3rem;"><i class="fa-solid fa-eye"></i> Butiran</a>
                         <form action="{{ route('admin.students.delete', $st) }}" method="POST" onsubmit="return confirm('Adakah anda pasti mahu memadam profil murid ini? Semua rekod kemajuan akan turut dipadam.')" style="display: inline;">
                             @csrf
                             @method('DELETE')

@@ -22,7 +22,12 @@
         </p>
     </div>
 
-    <div style="display: flex; gap: 0.8rem;">
+    <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
+        @if($isTeacher)
+            <a href="{{ route('guardian.exercises.index') }}" class="btn btn-outline" style="border-color: {{ $accent }}; color: {{ $accent }};">
+                <i class="fa-solid fa-pen-to-square"></i> Latihan &amp; Kuiz Kelas
+            </a>
+        @endif
         <button class="btn btn-primary" style="background: {{ $accent }};" onclick="document.getElementById('modal-new-child').style.display='flex'">
             <i class="fa-solid fa-plus"></i> {{ $isTeacher ? 'Daftar Murid Kelas' : 'Tambah Anak' }}
         </button>

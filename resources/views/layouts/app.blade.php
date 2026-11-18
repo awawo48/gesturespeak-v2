@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'GestureSpeak - Pembelajaran Bahasa Isyarat Interaktif' }}</title>
+    <title>{{ $title ?? 'Sign Cilik - Pembelajaran Bahasa Isyarat Interaktif' }}</title>
 
-    <link rel="icon" type="image/svg+xml" href="{{ asset('media/brand/logo-square.svg') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('media/brand/signcilik-icon.svg') }}">
 
-    <!-- Google Fonts: Nunito & Fredoka -->
+    <!-- Custom Pixel Font (CutePixel) -->
+    <link rel="preload" href="{{ asset('fonts/CutePixel.ttf') }}" as="font" type="font/ttf" crossorigin>
+
+    <!-- Google Fonts: Fredoka & Nunito -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -25,17 +28,19 @@
     @stack('styles')
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Langkau ke kandungan utama</a>
+
     <header class="site-header">
         <div class="header-container">
             <a href="{{ route('home') }}" class="brand-link">
-                @if(file_exists(public_path('media/brand/logo.png')))
-                    <img src="{{ asset('media/brand/logo.png') }}" alt="GestureSpeak Logo" class="brand-logo">
+                @if(file_exists(public_path('media/brand/signcilik-logo.svg')))
+                    <img src="{{ asset('media/brand/signcilik-logo.svg') }}" alt="Sign Cilik Logo" class="brand-logo">
                 @else
-                    <span>🤟 GestureSpeak</span>
+                    <span class="pixel-brand-fallback">Sign Cilik</span>
                 @endif
             </a>
 
-            <nav class="nav-links">
+            <nav class="nav-links" aria-label="Utama">
                 @php
                     $isAdultRoute = request()->routeIs('admin.*', 'guardian.*');
                     $hasStudent = Auth::guard('student')->check();
@@ -45,26 +50,27 @@
                 @if($hasStudent && !($isAdultRoute && $hasAdult))
                     {{-- Child Learner Navbar --}}
                     @php $currentStudent = Auth::guard('student')->user(); @endphp
-                    <a href="{{ route('learn.hub') }}" class="nav-item {{ request()->routeIs('learn.*') ? 'active' : '' }}">
-                        <i class="fa-solid fa-shapes"></i> Belajar
+                    <a href="{{ route('learn.hub') }}" class="nav-item nav-item--kid {{ request()->routeIs('learn.*') ? 'active' : '' }}">
+                        <x-sc-icon name="abjad-nombor" :size="22" /> <span>Belajar</span>
                     </a>
-                    <a href="{{ route('quiz.index') }}" class="nav-item {{ request()->routeIs('quiz.*') ? 'active' : '' }}">
-                        <i class="fa-solid fa-trophy"></i> Kuiz
+                    <a href="{{ route('quiz.index') }}" class="nav-item nav-item--kid {{ request()->routeIs('quiz.*') ? 'active' : '' }}">
+                        <x-sc-icon name="trofi" :size="22" /> <span>Kuiz</span>
                     </a>
 
-                    <div class="star-pill" title="Jumlah Bintang Dikumpul">
-                        ⭐ <span id="nav-star-count">{{ $currentStudent->stars }}</span>
+                    <div class="star-pill" style="min-height: var(--touch-min);" title="Jumlah Bintang Dikumpul">
+                        <x-sc-icon name="bintang-kuiz" :size="20" />
+                        <span id="nav-star-count">{{ $currentStudent->stars }}</span>
                     </div>
 
-                    <div class="nav-item" style="background: rgba(108, 92, 231, 0.08);">
-                        <span style="font-size: 1.3rem;">{{ $currentStudent->avatarEmoji() }}</span>
+                    <div class="nav-item nav-item--kid" style="background: rgba(38, 176, 229, 0.1);">
+                        <span style="font-size: 1.35rem;" aria-hidden="true">{{ $currentStudent->avatarEmoji() }}</span>
                         <span>{{ $currentStudent->name }}</span>
                     </div>
 
                     <form action="{{ route('student.logout') }}" method="POST" style="display: inline;">
                         @csrf
                         <button type="submit" class="btn btn-outline btn-sm" title="{{ $hasAdult ? 'Kembali ke Dashboard Ibu Bapa / Guru' : 'Keluar / Selesai Belajar' }}">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i> {{ $hasAdult ? 'Tamat Mod Murid' : 'Keluar' }}
+                            <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> {{ $hasAdult ? 'Tamat Mod Murid' : 'Keluar' }}
                         </button>
                     </form>
 
@@ -74,34 +80,34 @@
 
                     @if($currentUser->isAdmin())
                         <a href="{{ route('admin.dashboard') }}" class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-                            <i class="fa-solid fa-gauge-high"></i> Dashboard
+                            <x-sc-icon name="buku" :size="20" /> Dashboard
                         </a>
                         <a href="{{ route('admin.users') }}" class="nav-item {{ request()->routeIs('admin.users') ? 'active' : '' }}">
-                            <i class="fa-solid fa-users"></i> Pengguna
+                            <x-sc-icon name="ibu-bapa" :size="20" /> Pengguna
                         </a>
-                        <a href="{{ route('admin.students') }}" class="nav-item {{ request()->routeIs('admin.students') ? 'active' : '' }}">
-                            <i class="fa-solid fa-children"></i> Murid
+                        <a href="{{ route('admin.students') }}" class="nav-item {{ request()->routeIs('admin.students*') ? 'active' : '' }}">
+                            <x-sc-icon name="pelajar" :size="20" /> Murid
                         </a>
                         <a href="{{ route('admin.signs') }}" class="nav-item {{ request()->routeIs('admin.signs') ? 'active' : '' }}">
-                            <i class="fa-solid fa-hands-asl-interpreting"></i> Isyarat
+                            <x-sc-icon name="ucapan" :size="20" /> Isyarat
                         </a>
-                        <a href="{{ route('admin.ai.studio') }}" class="nav-item {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}" @unless(request()->routeIs('admin.ai.*')) style="color: #6c5ce7; font-weight: 800;" @endunless>
-                            <i class="fa-solid fa-robot"></i> AI Studio
+                        <a href="{{ route('admin.ai.studio') }}" class="nav-item {{ request()->routeIs('admin.ai.*') ? 'active' : '' }}" @unless(request()->routeIs('admin.ai.*')) style="color: var(--secondary-dark); font-weight: 800;" @endunless>
+                            <x-sc-icon name="robot-ai" :size="20" /> AI Studio
                         </a>
                     @else
                         @if($currentUser->isApproved())
                             <a href="{{ route('guardian.dashboard') }}" class="nav-item {{ request()->routeIs('guardian.*') ? 'active' : '' }}">
-                                <i class="fa-solid {{ $currentUser->isTeacher() ? 'fa-chalkboard-user' : 'fa-house-user' }}"></i>
+                                <x-sc-icon :name="$currentUser->isTeacher() ? 'guru' : 'ibu-bapa'" :size="20" />
                                 {{ $currentUser->isTeacher() ? 'Portal Kelas' : 'Portal Ibu Bapa' }}
                             </a>
                         @else
                             <a href="{{ route('guardian.pending') }}" class="nav-item active">
-                                <i class="fa-solid fa-hourglass-half"></i> Status Kelulusan
+                                <x-sc-icon name="buku" :size="20" /> Status Kelulusan
                             </a>
                         @endif
                     @endif
 
-                    <div class="nav-item" style="background: #f1f2f6;">
+                    <div class="nav-item" style="background: #f1f5f9;">
                         <span class="role-badge {{ $currentUser->role }}">{{ $currentUser->role }}</span>
                         <span>{{ $currentUser->name }}</span>
                     </div>
@@ -109,47 +115,59 @@
                     <form action="{{ route('logout') }}" method="POST" style="display: inline;">
                         @csrf
                         <button type="submit" class="btn btn-outline btn-sm">
-                            <i class="fa-solid fa-power-off"></i> Log Keluar
+                            <i class="fa-solid fa-power-off" aria-hidden="true"></i> Log Keluar
                         </button>
                     </form>
 
                 @else
                     {{-- Guest Navbar --}}
-                    <a href="{{ route('student.login') }}" class="btn btn-accent btn-sm">
-                        <i class="fa-solid fa-child"></i> Masuk Murid
+                    <a href="{{ route('home') }}#modul" class="nav-item">
+                        <span>Dunia Belajar</span>
                     </a>
-                    <a href="{{ route('login') }}" class="btn btn-outline btn-sm">
-                        <i class="fa-solid fa-user-tie"></i> Ibu Bapa / Guru
+                    <a href="{{ route('home') }}#ciri" class="nav-item">
+                        <span>Kuiz &amp; Bintang</span>
+                    </a>
+                    <a href="{{ route('home') }}#peranan" class="nav-item">
+                        <span>Ibu Bapa &amp; Guru</span>
+                    </a>
+                    <a href="{{ route('student.login') }}" class="btn btn-soft btn-sm">
+                        <x-sc-icon name="kod-pin" :size="18" /> <span>Kod + PIN Pelajar</span>
+                    </a>
+                    <a href="{{ route('login') }}" class="btn btn-primary btn-sm">
+                        Portal Cikgu &amp; Ibu Bapa
                     </a>
                 @endif
             </nav>
         </div>
     </header>
 
-    <main class="page-container">
+    <main class="page-container" id="main-content" tabindex="-1">
         {{-- Flash Messages --}}
         @if(session('success'))
-            <div class="alert alert-success">
-                <i class="fa-solid fa-circle-check" style="font-size: 1.2rem;"></i>
+            <div class="alert alert-success" role="alert">
+                <i class="fa-solid fa-circle-check" style="font-size: 1.25rem;" aria-hidden="true"></i>
                 <span>{{ session('success') }}</span>
+                <button type="button" class="alert-dismiss" aria-label="Tutup makluman" onclick="this.closest('.alert').remove()">&times;</button>
             </div>
         @endif
 
         @if(session('error'))
-            <div class="alert alert-error">
-                <i class="fa-solid fa-circle-exclamation" style="font-size: 1.2rem;"></i>
+            <div class="alert alert-error" role="alert">
+                <i class="fa-solid fa-circle-exclamation" style="font-size: 1.25rem;" aria-hidden="true"></i>
                 <span>{{ session('error') }}</span>
+                <button type="button" class="alert-dismiss" aria-label="Tutup makluman" onclick="this.closest('.alert').remove()">&times;</button>
             </div>
         @endif
 
         @if($errors->any())
-            <div class="alert alert-error">
-                <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.2rem;"></i>
+            <div class="alert alert-error" role="alert">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.25rem;" aria-hidden="true"></i>
                 <div>
                     @foreach($errors->all() as $error)
                         <p>{{ $error }}</p>
                     @endforeach
                 </div>
+                <button type="button" class="alert-dismiss" aria-label="Tutup makluman" onclick="this.closest('.alert').remove()">&times;</button>
             </div>
         @endif
 
@@ -157,11 +175,50 @@
     </main>
 
     <footer class="site-footer">
-        <p><strong>GestureSpeak V2</strong> &bull; Sistem Pembelajaran Bahasa Isyarat Malaysia (BIM) Interaktif Kanak-kanak</p>
-        <p style="margin-top: 0.3rem; font-size: 0.8rem; color: #a4b0be;">Dikuasakan oleh MediaPipe AI & Laravel &bull; Hak Cipta Terpelihara</p>
+        <div class="footer-inner">
+            <div class="footer-grid">
+                <div>
+                    <img
+                        src="{{ asset('media/brand/signcilik-logo-dark.svg') }}"
+                        alt="Sign Cilik"
+                        width="184"
+                        height="62"
+                        loading="lazy"
+                        decoding="async"
+                        style="height: 52px; width: auto;"
+                    >
+                    <p class="footer-brand-desc">
+                        Dunia permainan &amp; pembelajaran Bahasa Isyarat Malaysia (BIM) yang ceria untuk kanak-kanak, ibu bapa, dan guru.
+                    </p>
+                </div>
+
+                <nav aria-label="Dunia permainan">
+                    <h3 class="footer-heading">Dunia permainan</h3>
+                    <ul class="footer-links">
+                        <li><a href="{{ route('home') }}#modul">Abjad, Nombor &amp; Ucapan Harian</a></li>
+                        <li><a href="{{ route('home') }}#ciri">Kuiz Bintang &amp; Latihan Cikgu</a></li>
+                        <li><a href="{{ route('home') }}#ciri">Kamera AI &amp; Audio Sebutan BM</a></li>
+                    </ul>
+                </nav>
+
+                <nav aria-label="Pintu masuk">
+                    <h3 class="footer-heading">Pintu masuk</h3>
+                    <ul class="footer-links">
+                        <li><a href="{{ route('student.login') }}">Masuk Pelajar (Kod + PIN)</a></li>
+                        <li><a href="{{ route('login') }}">Portal Ibu Bapa &amp; Guru</a></li>
+                        <li><a href="{{ route('register') }}">Daftar Akaun Ibu Bapa &amp; Cikgu</a></li>
+                    </ul>
+                </nav>
+            </div>
+
+            <div class="footer-bottom">
+                <span>&copy; {{ date('Y') }} <strong style="color: #fff;">SignCilik</strong> &mdash; Platform pembelajaran Bahasa Isyarat Malaysia (BIM) untuk kanak-kanak, ibu bapa dan guru</span>
+                <span>Dikuasakan oleh MediaPipe AI &amp; Laravel</span>
+            </div>
+        </div>
     </footer>
 
-    @if(request()->routeIs('learn.*', 'quiz.*', 'student.*'))
+    @if(request()->routeIs('learn.*', 'quiz.*'))
         @include('partials.kiko-mascot')
     @endif
 

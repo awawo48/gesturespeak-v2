@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['student_id', 'category_id', 'score', 'total', 'stars'])]
+#[Fillable(['student_id', 'category_id', 'score', 'total', 'stars', 'mode'])]
 class QuizAttempt extends Model
 {
     public function category(): BelongsTo

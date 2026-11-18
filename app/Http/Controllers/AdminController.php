@@ -123,6 +123,28 @@ class AdminController extends Controller
         ]);
     }
 
+    public function showStudent(Student $student): View
+    {
+        $student->load(['guardians', 'assignedCategory', 'teacherReviewer', 'creator']);
+
+        $progress = $student->progress()->with('sign.category')->latest('updated_at')->get();
+
+        return view('admin.student-show', [
+            'student' => $student,
+            'summary' => $student->progressSummary(),
+            'attempts' => $student->quizAttempts()->with('category')->latest()->take(30)->get(),
+            'exerciseAttempts' => $student->exerciseAttempts()->with('exercise')->latest()->take(30)->get(),
+            'recent' => $progress->take(15),
+            'needsPractice' => $progress->where('mastered', false)->where('practice_count', '>', 0)->sortByDesc('practice_count')->take(8),
+            'stats' => [
+                'practices' => (int) $progress->sum('practice_count'),
+                'mastered' => $progress->where('mastered', true)->count(),
+                'quizzes' => $student->quizAttempts()->count() + $student->exerciseAttempts()->count(),
+                'best_stars' => (int) $student->quizAttempts()->max('stars'),
+            ],
+        ]);
+    }
+
     public function deleteStudent(Student $student): RedirectResponse
     {
         $student->delete();

@@ -8,6 +8,7 @@ use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LearningController;
 use App\Http\Controllers\QuizController;
+use App\Http\Controllers\TeacherExerciseController;
 use App\Http\Controllers\TtsController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,6 +53,8 @@ Route::middleware('auth:student')->name('learn.')->prefix('learn')->group(functi
 
 Route::middleware('auth:student')->name('quiz.')->prefix('quiz')->group(function () {
     Route::get('/', [QuizController::class, 'index'])->name('index');
+    Route::get('/latihan/{exercise}', [QuizController::class, 'playExercise'])->name('exercise');
+    Route::post('/latihan/{exercise}/submit', [QuizController::class, 'submitExercise'])->name('exercise.submit');
     Route::get('/{category}', [QuizController::class, 'play'])->name('play');
     Route::post('/{category}/submit', [QuizController::class, 'submit'])->name('submit');
 });
@@ -76,6 +79,16 @@ Route::middleware(['auth:web', 'role:parent,teacher', 'approved'])->name('guardi
     Route::post('/child/{student}/teacher-note', [GuardianController::class, 'saveTeacherNote'])
         ->middleware('role:teacher')
         ->name('child.note');
+
+    // Teacher-only: custom exercises (Latihan)
+    Route::middleware('role:teacher')->prefix('exercises')->name('exercises.')->group(function () {
+        Route::get('/', [TeacherExerciseController::class, 'index'])->name('index');
+        Route::get('/create', [TeacherExerciseController::class, 'create'])->name('create');
+        Route::post('/', [TeacherExerciseController::class, 'store'])->name('store');
+        Route::get('/{exercise}', [TeacherExerciseController::class, 'show'])->name('show');
+        Route::patch('/{exercise}/toggle', [TeacherExerciseController::class, 'toggle'])->name('toggle');
+        Route::delete('/{exercise}', [TeacherExerciseController::class, 'destroy'])->name('destroy');
+    });
 });
 
 // AI Dataset Endpoint (Accessible for student learning & camera recognition)
@@ -94,6 +107,7 @@ Route::middleware(['auth:web', 'role:admin'])->name('admin.')->prefix('admin')->
     Route::patch('/users/{user}/approve', [AdminController::class, 'approveUser'])->name('users.approve');
     Route::patch('/users/{user}/reject', [AdminController::class, 'rejectUser'])->name('users.reject');
     Route::get('/students', [AdminController::class, 'students'])->name('students');
+    Route::get('/students/{student}', [AdminController::class, 'showStudent'])->name('students.show');
     Route::delete('/students/{student}', [AdminController::class, 'deleteStudent'])->name('students.delete');
     Route::get('/signs', [AdminController::class, 'signs'])->name('signs');
     Route::put('/signs/{sign}', [AdminController::class, 'updateSign'])->name('signs.update');

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="170" height="166" viewBox="0 0 170 166">
+  <title>Untitled-1</title>
+  <g>
+    <g>
+      <path d="M85 159 C85 159 7 109 7 57 C7 25 33 7 57 7 C73 7 85 19 85 31 C85 19 97 7 113 7 C137 7 163 25 163 57 C163 109 85 159 85 159 Z" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M85 159 C85 159 7 109 7 57 C7 25 33 7 57 7 C73 7 85 19 85 31 C85 19 97 7 113 7 C137 7 163 25 163 57 C163 109 85 159 85 159 Z" fill="#58caf3"/>
+      <ellipse cx="66" cy="68" rx="13" ry="15" fill="#ffffff"/>
+      <ellipse cx="67" cy="68" rx="10" ry="12" fill="#16324f"/>
+      <circle cx="64" cy="63" r="4" fill="#ffffff"/>
+      <ellipse cx="104" cy="68" rx="13" ry="15" fill="#ffffff"/>
+      <ellipse cx="105" cy="68" rx="10" ry="12" fill="#16324f"/>
+      <circle cx="102" cy="63" r="4" fill="#ffffff"/>
+      <path d="M71 95 C80.333 105.667 89.667 105.667 99 95" fill="none" stroke="#16324f" stroke-width="7" stroke-linecap="round" stroke-miterlimit="10"/>
+    </g>
+  </g>
+</svg>

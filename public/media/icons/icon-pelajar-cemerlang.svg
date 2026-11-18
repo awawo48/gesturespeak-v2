@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="186" height="148" viewBox="0 0 186 148">
+  <title>Untitled-1</title>
+  <g>
+    <g>
+      <polygon points="93,7 179,47 93,87 7,47" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M63 65 L123 65 C136.255 65 147 75.745 147 89 L147 117 C147 130.255 136.255 141 123 141 L63 141 C49.745 141 39 130.255 39 117 L39 89 C39 75.745 49.745 65 63 65 Z" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <line x1="165" y1="53" x2="165" y2="107" fill="none" stroke="#16324f" stroke-width="22" stroke-linecap="round" stroke-miterlimit="10"/>
+      <path d="M63 65 L123 65 C136.255 65 147 75.745 147 89 L147 117 C147 130.255 136.255 141 123 141 L63 141 C49.745 141 39 130.255 39 117 L39 89 C39 75.745 49.745 65 63 65 Z" fill="#ffe942"/>
+      <polygon points="93,7 179,47 93,87 7,47" fill="#16324f"/>
+      <line x1="165" y1="53" x2="165" y2="107" fill="none" stroke="#ffe942" stroke-width="8" stroke-linecap="round" stroke-miterlimit="10"/>
+      <ellipse cx="74" cy="98" rx="11" ry="13" fill="#ffffff"/>
+      <ellipse cx="75" cy="98" rx="8" ry="10" fill="#16324f"/>
+      <circle cx="73" cy="94" r="3" fill="#ffffff"/>
+      <ellipse cx="112" cy="98" rx="11" ry="13" fill="#ffffff"/>
+      <ellipse cx="113" cy="98" rx="8" ry="10" fill="#16324f"/>
+      <circle cx="111" cy="94" r="3" fill="#ffffff"/>
+      <path d="M81 119 C89 128.333 97 128.333 105 119" fill="none" stroke="#16324f" stroke-width="6" stroke-linecap="round" stroke-miterlimit="10"/>
+    </g>
+  </g>
+</svg>

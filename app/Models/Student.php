@@ -60,6 +60,22 @@ class Student extends Authenticatable
         return $this->hasMany(QuizAttempt::class);
     }
 
+    public function exerciseAttempts(): HasMany
+    {
+        return $this->hasMany(ExerciseAttempt::class);
+    }
+
+    /** Active teacher-made exercises from teachers linked to this student. */
+    public function teacherExercises()
+    {
+        $teacherIds = $this->guardians()->where('users.role', User::ROLE_TEACHER)->pluck('users.id');
+
+        return Exercise::with('teacher')
+            ->whereIn('user_id', $teacherIds)
+            ->where('is_active', true)
+            ->latest();
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

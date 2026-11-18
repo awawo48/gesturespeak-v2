@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="206" height="147" viewBox="0 0 206 147">
+  <title>Untitled-1</title>
+  <g>
+    <g>
+      <ellipse cx="54" cy="44" rx="39" ry="37" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <ellipse cx="152" cy="44" rx="39" ry="37" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M7 137 C7 97 33 81 61 81 L145 81 C173 81 199 97 199 137 Z" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <ellipse cx="54" cy="44" rx="39" ry="37" fill="#ffe942"/>
+      <ellipse cx="43" cy="42" rx="6" ry="7" fill="#16324f"/>
+      <ellipse cx="65" cy="42" rx="6" ry="7" fill="#16324f"/>
+      <path d="M45 59 C51 65.667 57 65.667 63 59" fill="none" stroke="#16324f" stroke-width="4.5" stroke-linecap="round" stroke-miterlimit="10"/>
+      <ellipse cx="152" cy="44" rx="39" ry="37" fill="#ffe942"/>
+      <ellipse cx="141" cy="42" rx="6" ry="7" fill="#16324f"/>
+      <ellipse cx="163" cy="42" rx="6" ry="7" fill="#16324f"/>
+      <path d="M143 59 C149 65.667 155 65.667 161 59" fill="none" stroke="#16324f" stroke-width="4.5" stroke-linecap="round" stroke-miterlimit="10"/>
+      <path d="M53 143 C53 105 75 89 103 89 C131 89 153 105 153 143 Z" fill="#16324f" stroke="#16324f" stroke-width="8" stroke-linejoin="round"/>
+      <ellipse cx="103" cy="75" rx="43" ry="40" fill="#58caf3" stroke="#16324f" stroke-width="8" stroke-miterlimit="10"/>
+      <ellipse cx="89.5" cy="73" rx="8.5" ry="10" fill="#ffffff"/>
+      <ellipse cx="89.5" cy="73.5" rx="6.5" ry="7.5" fill="#16324f"/>
+      <circle cx="87.5" cy="70.5" r="2.5" fill="#ffffff"/>
+      <ellipse cx="116.5" cy="73" rx="8.5" ry="10" fill="#ffffff"/>
+      <ellipse cx="116.5" cy="73.5" rx="6.5" ry="7.5" fill="#16324f"/>
+      <circle cx="114.5" cy="70.5" r="2.5" fill="#ffffff"/>
+      <path d="M93 89 C99.667 97 106.333 97 113 89" fill="none" stroke="#16324f" stroke-width="5" stroke-linecap="round" stroke-miterlimit="10"/>
+    </g>
+  </g>
+</svg>

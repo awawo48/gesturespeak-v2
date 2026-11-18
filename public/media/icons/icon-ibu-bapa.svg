@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="188" height="170" viewBox="0 0 188 170">
+  <title>Untitled-1</title>
+  <g>
+    <g>
+      <path d="M7 159 C7 107 33 87 67 87 C101 87 127 107 127 159 Z" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <ellipse cx="67" cy="55" rx="51" ry="48" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M85 163 C85 125 107 109 133 109 C159 109 181 125 181 163 Z" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <ellipse cx="133" cy="85" rx="41" ry="38" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M7 159 C7 107 33 87 67 87 C101 87 127 107 127 159 Z" fill="#16324f"/>
+      <ellipse cx="67" cy="55" rx="51" ry="48" fill="#58caf3"/>
+      <ellipse cx="51" cy="51" rx="10" ry="12" fill="#ffffff"/>
+      <ellipse cx="51.5" cy="51" rx="7.5" ry="9" fill="#16324f"/>
+      <circle cx="49" cy="47" r="3" fill="#ffffff"/>
+      <ellipse cx="81" cy="51" rx="10" ry="12" fill="#ffffff"/>
+      <ellipse cx="81.5" cy="51" rx="7.5" ry="9" fill="#16324f"/>
+      <circle cx="79" cy="47" r="3" fill="#ffffff"/>
+      <path d="M55 71 C62.333 79 69.667 79 77 71" fill="none" stroke="#16324f" stroke-width="5.5" stroke-linecap="round" stroke-miterlimit="10"/>
+      <path d="M85 163 C85 125 107 109 133 109 C159 109 181 125 181 163 Z" fill="#ffe942" stroke="#16324f" stroke-width="5" stroke-linejoin="round"/>
+      <ellipse cx="137.485" cy="83.5" rx="41" ry="38" fill="#58caf3" stroke="#16324f" stroke-width="8" stroke-miterlimit="10"/>
+      <ellipse cx="124.985" cy="77.5" rx="8.5" ry="10" fill="#ffffff"/>
+      <ellipse cx="124.985" cy="78" rx="6.5" ry="7.5" fill="#16324f"/>
+      <circle cx="122.985" cy="75" r="2.5" fill="#ffffff"/>
+      <ellipse cx="149.985" cy="77.5" rx="8.5" ry="10" fill="#ffffff"/>
+      <ellipse cx="149.985" cy="78" rx="6.5" ry="7.5" fill="#16324f"/>
+      <circle cx="147.985" cy="75" r="2.5" fill="#ffffff"/>
+      <path d="M128.485 93.5 C134.485 100.167 140.485 100.167 146.485 93.5" fill="none" stroke="#16324f" stroke-width="5" stroke-linecap="round" stroke-miterlimit="10"/>
+    </g>
+  </g>
+</svg>

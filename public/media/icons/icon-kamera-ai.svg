@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="170" height="152" viewBox="0 0 170 152">
+  <title>Untitled-1</title>
+  <g id="Layer_1" data-name="Layer 1">
+    <g>
+      <path d="M67 7 L103 7 C108.523 7 113 11.477 113 17 L113 33 C113 38.523 108.523 43 103 43 L67 43 C61.477 43 57 38.523 57 33 L57 17 C57 11.477 61.477 7 67 7 Z" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M35 29 L135 29 C150.464 29 163 41.536 163 57 L163 117 C163 132.464 150.464 145 135 145 L35 145 C19.536 145 7 132.464 7 117 L7 57 C7 41.536 19.536 29 35 29 Z" fill="#16324f" stroke="#16324f" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M67 9 L103 9 C107.418 9 111 12.582 111 17 L111 33 C111 37.418 107.418 41 103 41 L67 41 C62.582 41 59 37.418 59 33 L59 17 C59 12.582 62.582 9 67 9 Z" fill="#ffe942" stroke="#16324f" stroke-width="5" stroke-miterlimit="10"/>
+      <path d="M35 29 L135 29 C150.464 29 163 41.536 163 57 L163 117 C163 132.464 150.464 145 135 145 L35 145 C19.536 145 7 132.464 7 117 L7 57 C7 41.536 19.536 29 35 29 Z" fill="#58caf3"/>
+      <circle cx="85" cy="87" r="38" fill="#ffffff"/>
+      <circle cx="85" cy="87" r="29" fill="#16324f"/>
+      <circle cx="74" cy="76" r="10" fill="#ffffff"/>
+      <circle cx="140" cy="54" r="9" fill="#ffe942" stroke="#16324f" stroke-width="3" stroke-miterlimit="10"/>
+    </g>
+  </g>
+</svg>

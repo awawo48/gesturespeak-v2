@@ -15,15 +15,15 @@
     }
     .camera-box {
         position: relative;
-        background: #1e272e;
-        border-radius: var(--radius-lg);
+        background: var(--primary-dark);
+        border-radius: var(--radius-md);
         overflow: hidden;
         aspect-ratio: 4/3;
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 4px solid var(--border-light);
-        box-shadow: var(--shadow-md);
+        border: 3px solid var(--secondary);
+        box-shadow: 5px 5px 0 rgba(22, 50, 79, 0.2);
     }
     .camera-video, .camera-canvas {
         position: absolute;
@@ -59,12 +59,15 @@
         top: 10px;
         left: 10px;
         z-index: 3;
-        padding: 0.3rem 0.7rem;
-        border-radius: 999px;
-        font-size: 0.75rem;
-        font-weight: 800;
+        padding: 0.35rem 0.7rem;
+        border-radius: var(--radius-sm);
+        border: 2px solid rgba(255, 255, 255, 0.28);
+        font-family: var(--font-pixel);
+        font-size: 0.94rem;
+        font-weight: 500;
+        letter-spacing: 0.04em;
         color: #fff;
-        background: rgba(15, 23, 42, 0.75);
+        background: rgba(15, 34, 56, 0.85);
         backdrop-filter: blur(6px);
         display: none;
         align-items: center;
@@ -199,14 +202,14 @@
                     <button type="button" id="btn-toggle-face" class="face-toggle-btn active" title="Aktifkan/Matikan Pengesan Wajah & Ekspresi BIM untuk ketepatan lebih tinggi">
                         <i class="fa-solid fa-face-smile"></i> AI Wajah
                     </button>
-                    <span id="ai-status-badge" style="font-size: 0.8rem; font-weight: 800; background: #edf2f7; color: var(--text-muted); padding: 0.2rem 0.6rem; border-radius: var(--radius-full);">
+                    <span id="ai-status-badge" class="pixel-code">
                         Kamera Ditutup
                     </span>
                 </div>
             </div>
 
             @if($sign->label === 'J')
-                <div style="background: rgba(108, 92, 231, 0.1); border: 1px solid rgba(108, 92, 231, 0.3); padding: 0.6rem 1rem; border-radius: var(--radius-md); margin-bottom: 0.8rem; font-size: 0.85rem; color: #5041c9; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                <div style="background: rgba(38, 176, 229, 0.12); border: 2px solid rgba(38, 176, 229, 0.45); padding: 0.6rem 1rem; border-radius: var(--radius-md); margin-bottom: 0.8rem; font-size: 0.85rem; color: #0369a1; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fa-solid fa-wand-magic-sparkles"></i>
                     <span>Panduan Gerakan J: Angkat kelengkeng tegak, lukis cangkuk "J" di udara lalu berhenti sekejap!</span>
                 </div>
@@ -220,6 +223,18 @@
             <div class="camera-box" id="camera-box">
                 <video id="webcam" class="camera-video" autoplay muted playsinline style="display: none;"></video>
                 <canvas id="output_canvas" class="camera-canvas"></canvas>
+
+                <div class="pixel-reticle" aria-hidden="true">
+                    <span class="pixel-corner pixel-corner--tl"></span>
+                    <span class="pixel-corner pixel-corner--tr"></span>
+                    <span class="pixel-corner pixel-corner--bl"></span>
+                    <span class="pixel-corner pixel-corner--br"></span>
+                    <div class="pixel-cam-hud">
+                        <span class="pixel-bars"><i></i><i></i><i></i><i></i></span>
+                        <span class="pixel-hud-label">AI BIM | MEDIAPIPE</span>
+                        <span class="pixel-spark pixel-spark--cam"><span></span><span></span><span></span></span>
+                    </div>
+                </div>
 
                 <div style="position: absolute; top: 10px; left: 10px; right: 10px; z-index: 3; display: flex; justify-content: space-between; align-items: flex-start; gap: 0.4rem; flex-wrap: wrap; pointer-events: none;">
                     <div id="face-hud-pill" class="face-hud-pill" style="position: static;">
@@ -255,7 +270,7 @@
                 <div style="flex: 1;">
                     <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 800; margin-bottom: 0.25rem;">
                         <span>Ketepatan Padanan AI</span>
-                        <span id="confidence-pct">0%</span>
+                        <span id="confidence-pct" class="pixel-code">0%</span>
                     </div>
                     <div class="progress-track" style="height: 10px;">
                         <div id="confidence-bar" class="progress-fill" style="width: 0%; background: var(--secondary);"></div>

@@ -1,11 +1,13 @@
-@extends('layouts.app', ['title' => 'Daftar Akaun Baru - GestureSpeak'])
+@extends('layouts.app', ['title' => 'Daftar Akaun Baru - Sign Cilik'])
 
 @section('content')
 <div style="max-width: 520px; margin: 1.5rem auto;">
-    <div class="card" style="border: 2px solid var(--border-light); padding: 2.5rem 2rem;">
+    <div class="card pixel-card" style="padding: 2.25rem 2rem;">
 
-        <div style="text-align: center; margin-bottom: 2rem;">
-            <div style="font-size: 2.8rem; margin-bottom: 0.5rem;">📝 👨‍👩‍👧</div>
+        <div style="text-align: center; margin-bottom: 1.75rem;">
+            <div style="display: flex; justify-content: center; margin-bottom: 0.75rem;">
+                <x-sc-icon name="keluarga-guru" :size="62" />
+            </div>
             <h1 style="font-size: 1.8rem; margin-bottom: 0.3rem;">Daftar Akaun Dewasa</h1>
             <p style="color: var(--text-muted); font-size: 0.95rem;">
                 Daftar sebagai Ibu Bapa atau Guru untuk mula mendaftar murid
