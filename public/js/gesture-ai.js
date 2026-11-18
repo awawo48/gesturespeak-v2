@@ -56,12 +56,12 @@ const round5 = v => Math.round(v * 1e5) / 1e5;
  *
  * Works on both existing database samples and live frames without schema changes.
  */
-export function extractHandGeometry(vec63) {
+export function extractHandGeometry(vec63, offset = 0) {
     const geom = new Float32Array(15);
-    if (!vec63 || vec63.length < 63) return geom;
+    if (!vec63 || vec63.length < offset + 63) return geom;
 
     const jDist = (a, b) => {
-        const ia = a * 3, ib = b * 3;
+        const ia = offset + a * 3, ib = offset + b * 3;
         const dx = vec63[ia] - vec63[ib];
         const dy = vec63[ia + 1] - vec63[ib + 1];
         const dz = vec63[ia + 2] - vec63[ib + 2];
@@ -609,33 +609,80 @@ const BIM_FACE_RULES = {
     BERAPA: { exprs: ["soalan"], hintOk: "Mimik bertanya + Isyarat Berapa dikesan! ⭐" },
 };
 
+/**
+ * Resolves the effective Option-A face/pose constraint rule for a BIM sign:
+ * - Ignores catch-all "bebas" zones.
+ * - Treats "neutral"-containing expression lists as optional mood markers rather than mandatory checks.
+ */
+export function getEffectiveFaceRule(label) {
+    const key = String(label || "").trim().toUpperCase();
+    const raw = BIM_FACE_RULES[key];
+    if (!raw) {
+        return {
+            key,
+            zones: null,
+            exprs: null,
+            strictZone: false,
+            hasConstraint: false,
+            hintNeed: null,
+            hintExpr: null,
+            hintOk: null,
+        };
+    }
+
+    const rawZones = Array.isArray(raw.zones) ? raw.zones.filter(z => z && z !== "bebas") : [];
+    const zones = rawZones.length > 0 ? rawZones : null;
+
+    const rawExprs = Array.isArray(raw.exprs) ? raw.exprs : [];
+    const hasNeutral = rawExprs.includes("neutral");
+    const nonNeutralExprs = rawExprs.filter(e => e && e !== "neutral");
+    const exprs = (!hasNeutral && nonNeutralExprs.length > 0) ? nonNeutralExprs : null;
+
+    const strictZone = Boolean(raw.strictZone && zones && zones.length > 0);
+    const hasConstraint = Boolean((zones && zones.length > 0) || (exprs && exprs.length > 0));
+
+    return {
+        key,
+        zones,
+        exprs,
+        strictZone,
+        hasConstraint,
+        hintNeed: raw.hintNeed || null,
+        hintExpr: raw.hintExpr || null,
+        hintOk: raw.hintOk || null,
+    };
+}
+
 export function evaluateFaceSignBoost(targetLabel, faceContext) {
     if (!faceContext || !faceContext.hasFace || !targetLabel) {
         return { bonus: 0, zoneMatched: null, exprMatched: null, hintOk: null, hintNeed: null, strictBlocked: false };
     }
     const key = String(targetLabel).trim().toUpperCase();
-    const rule = BIM_FACE_RULES[key];
-    if (!rule) {
+    const raw = BIM_FACE_RULES[key];
+    if (!raw) {
         return { bonus: 0, zoneMatched: null, exprMatched: null, hintOk: null, hintNeed: null, strictBlocked: false };
     }
+
+    const effZones = Array.isArray(raw.zones) ? raw.zones.filter(z => z && z !== "bebas") : [];
+    const effExprs = Array.isArray(raw.exprs) ? raw.exprs.filter(e => e && e !== "neutral") : [];
 
     let bonus = 0;
     let zoneMatched = null;
     let exprMatched = null;
     let strictBlocked = false;
 
-    if (rule.zones) {
-        zoneMatched = rule.zones.includes(faceContext.zone);
+    if (effZones.length > 0) {
+        zoneMatched = effZones.includes(faceContext.zone);
         if (zoneMatched) {
             bonus += 9;
-        } else if (rule.strictZone) {
+        } else if (raw.strictZone) {
             strictBlocked = true;
             bonus -= 18;
         }
     }
 
-    if (rule.exprs) {
-        exprMatched = rule.exprs.includes(faceContext.expression);
+    if (effExprs.length > 0) {
+        exprMatched = effExprs.includes(faceContext.expression);
         if (exprMatched) {
             bonus += 8;
         }
@@ -646,8 +693,10 @@ export function evaluateFaceSignBoost(targetLabel, faceContext) {
         zoneMatched,
         exprMatched,
         strictBlocked,
-        hintOk: (zoneMatched || exprMatched) ? (rule.hintOk || null) : null,
-        hintNeed: (!zoneMatched && rule.hintNeed) ? rule.hintNeed : (!exprMatched && rule.hintExpr ? rule.hintExpr : null),
+        hintOk: (zoneMatched || exprMatched) ? (raw.hintOk || null) : null,
+        hintNeed: (effZones.length > 0 && !zoneMatched && raw.hintNeed)
+            ? raw.hintNeed
+            : (effExprs.length > 0 && !exprMatched && raw.hintExpr ? raw.hintExpr : null),
     };
 }
 
@@ -728,7 +777,7 @@ function multimodalSqDist(a, b, mirror, useFace, geomA = null, geomB = null) {
     }
     handD = handD * 0.78 + geomD * 0.65;
 
-    if (!useFace || a.length < 78 || b.length < 78 || a[77] < 0.5 || b[77] < 0.5) {
+    if (!useFace || a.length < 78 || b.length < 78 || a[77] <= 0.55 || b[77] <= 0.55) {
         return handD;
     }
 
@@ -1043,15 +1092,22 @@ export function trimIdleSequenceFrames(frames, minFrames = 10) {
     for (let i = 1; i < n; i++) {
         const a = frames[i - 1], b = frames[i];
         let sumSq = 0;
-        const len = Math.min(a.length, b.length, 67);
-        for (let d = 0; d < 63; d++) {
+        const minLen = Math.min(a.length, b.length);
+        const handLim = Math.min(minLen, 63);
+        for (let d = 0; d < handLim; d++) {
             const diff = b[d] - a[d];
             sumSq += diff * diff;
         }
-        if (len >= 67 && a[77] >= 0.2 && b[77] >= 0.2) {
+        if (minLen >= 78 && a[77] >= 0.2 && b[77] >= 0.2) {
             for (let d = 63; d < 67; d++) {
                 const diff = (b[d] - a[d]) * 2.5;
                 sumSq += diff * diff;
+            }
+        }
+        if (minLen >= 146 && a[141] >= 0.5 && b[141] >= 0.5) {
+            for (let d = 78; d < 141; d++) {
+                const diff = b[d] - a[d];
+                sumSq += diff * diff * 0.7;
             }
         }
         motion[i] = Math.sqrt(sumSq);
@@ -1068,21 +1124,24 @@ export function trimIdleSequenceFrames(frames, minFrames = 10) {
     let end = n - 1;
     while (end > start + minFrames - 1 && motion[end] < thresh) end--;
 
-    // Keep 1 context frame on each side
-    start = Math.max(0, start - 1);
-    end = Math.min(n - 1, end + 1);
+    // Keep 2 context frames on each side
+    start = Math.max(0, start - 2);
+    end = Math.min(n - 1, end + 2);
     return frames.slice(start, end + 1);
 }
 
 /**
- * Resamples a sequence of landmark frames (each 63 or 78 numbers) to an exact target length.
+ * Resamples a sequence of landmark frames (each 63, 78, or 146 numbers) to an exact target length.
  */
 export function resampleSequence(frames, targetLength = 30) {
     if (!frames || frames.length === 0) return [];
-    const dim = frames.some(f => f && f.length >= 78) ? 78 : 63;
+    const dim = frames.some(f => f && f.length >= 146)
+        ? 146
+        : (frames.some(f => f && f.length >= 78) ? 78 : 63);
+
     const normFrame = f => {
         if (f.length === dim) return f;
-        if (dim === 78 && f.length === 63) return [...f, ...new Array(15).fill(0)];
+        if (f.length < dim) return [...f, ...new Array(dim - f.length).fill(0)];
         return f.slice(0, dim);
     };
 
@@ -1104,8 +1163,25 @@ export function resampleSequence(frames, targetLength = 30) {
             interpolated[d] = f0[d] * (1 - frac) + f1[d] * frac;
         }
         // Preserve trajectory/face flag cleanly without fractional decay at boundaries
-        if (dim === 78) {
+        if (dim >= 78) {
             interpolated[77] = Math.max(f0[77] || 0, f1[77] || 0);
+        }
+        // Preserve 2nd-hand & pose presence flags cleanly; snap 2nd-hand block if only one endpoint has hand 2
+        if (dim >= 146) {
+            const h2a = (f0[141] || 0) >= 0.5;
+            const h2b = (f1[141] || 0) >= 0.5;
+            if (h2a && h2b) {
+                interpolated[141] = 1;
+            } else if (h2a || h2b) {
+                const src = frac < 0.5 ? f0 : f1;
+                for (let d = 78; d <= 144; d++) {
+                    interpolated[d] = src[d];
+                }
+                interpolated[141] = (src[141] || 0) >= 0.5 ? 1 : 0;
+            } else {
+                interpolated[141] = 0;
+            }
+            interpolated[145] = Math.max(f0[145] || 0, f1[145] || 0) >= 0.5 ? 1 : 0;
         }
         resampled.push(interpolated);
     }
@@ -1118,13 +1194,16 @@ export function resampleSequence(frames, targetLength = 30) {
  */
 function prepareSequenceFeatures(resampledFrames) {
     const n = resampledFrames.length;
+    const dim = n > 0 ? resampledFrames[0].length : 0;
     const geom = new Array(n);
+    const geom2 = dim >= 145 ? new Array(n) : null;
     const vel = new Array(n);
     const traj = new Array(n);
     const trajVel = new Array(n);
 
-    const hasTraj = n > 0 && resampledFrames[0].length >= 78 && resampledFrames.some(f => f[77] >= 0.2);
-    const hasFace = n > 0 && resampledFrames[0].length >= 78 && resampledFrames.some(f => f[77] > 0.5);
+    const hasTraj = n > 0 && dim >= 78 && resampledFrames.some(f => f[77] >= 0.2);
+    const hasPose = n > 0 && dim >= 78 && resampledFrames.some(f => f[77] >= 0.45 || (f.length >= 146 && f[145] >= 0.5));
+    const hasFace = n > 0 && dim >= 78 && resampledFrames.some(f => f[77] > 0.55);
 
     const baseIx = hasTraj ? resampledFrames[0][63] : 0;
     const baseIy = hasTraj ? resampledFrames[0][64] : 0;
@@ -1135,7 +1214,10 @@ function prepareSequenceFeatures(resampledFrames) {
         const curr = resampledFrames[t];
         const prev = t > 0 ? resampledFrames[t - 1] : curr;
 
-        geom[t] = extractHandGeometry(curr);
+        geom[t] = extractHandGeometry(curr, 0);
+        if (geom2) {
+            geom2[t] = curr[141] >= 0.5 ? extractHandGeometry(curr, 78) : null;
+        }
 
         const v = new Float32Array(63);
         for (let d = 0; d < 63; d++) {
@@ -1162,14 +1244,14 @@ function prepareSequenceFeatures(resampledFrames) {
         }
     }
 
-    return { frames: resampledFrames, geom, vel, traj, trajVel, hasTraj, hasFace };
+    return { frames: resampledFrames, geom, geom2, vel, traj, trajVel, hasTraj, hasPose, hasFace };
 }
 
 /**
  * Derivative Dynamic Time Warping (DDTW) distance between two sequences with:
  * - Sakoe-Chiba warping band constraint (prevents pathological time stretching)
  * - Left/Right hand mirror invariance (mirror = false | true)
- * - Handshape + anatomical geometry + start-anchored trajectory + velocity matching
+ * - Handshape + anatomical geometry + 2-hand coordination + start-anchored trajectory + speed-tolerant velocity matching
  */
 export function dtwDistance(seqA, seqB, useFace = false, mirror = false) {
     const prepA = seqA.frames ? seqA : prepareSequenceFeatures(seqA);
@@ -1182,6 +1264,7 @@ export function dtwDistance(seqA, seqB, useFace = false, mirror = false) {
     if (n === 0 || m === 0) return Infinity;
 
     const useTraj = prepA.hasTraj && prepB.hasTraj;
+    const useTwoHand = A[0].length >= 145 && B[0].length >= 145;
     const band = Math.max(5, Math.round(Math.max(n, m) * 0.25));
 
     let prev = new Float32Array(m + 1).fill(Infinity);
@@ -1196,18 +1279,20 @@ export function dtwDistance(seqA, seqB, useFace = false, mirror = false) {
 
         for (let j = jStart; j <= jEnd; j++) {
             const idxB = j - 1;
+            const fA = A[idxA];
+            const fB = B[idxB];
 
             // 1. Static handshape + anatomical geometry + optional face context distance
             const poseSq = multimodalSqDist(
-                A[idxA],
-                B[idxB],
+                fA,
+                fB,
                 mirror,
                 useFace,
                 prepA.geom[idxA],
                 prepB.geom[idxB]
             );
 
-            // 2. Joint articulation velocity distance (Derivative DTW)
+            // 2. Joint articulation velocity distance (Derivative DTW, speed-tolerant)
             const vA = prepA.vel[idxA];
             const vB = prepB.vel[idxB];
             let velSq = 0;
@@ -1230,11 +1315,43 @@ export function dtwDistance(seqA, seqB, useFace = false, mirror = false) {
                     const avk = (mirror && isX) ? -tvA[k] : tvA[k];
                     const dt = ak - tB[k];
                     const dtv = avk - tvB[k];
-                    trajSq += dt * dt * 0.85 + dtv * dtv * 14.0;
+                    trajSq += dt * dt * 0.85 + dtv * dtv * 1.8;
                 }
             }
 
-            const cost = Math.sqrt(poseSq * 0.68 + velSq * 1.6 + trajSq);
+            // 4. Secondary hand coordination & mismatch penalty (v2 146-dim vs 146-dim)
+            let secSq = 0;
+            if (useTwoHand) {
+                const hasH2A = fA[141] >= 0.5;
+                const hasH2B = fB[141] >= 0.5;
+                if (hasH2A && hasH2B) {
+                    let hand2D = 0;
+                    for (let d = 0; d < 63; d++) {
+                        const av = (mirror && d % 3 === 0) ? -fA[78 + d] : fA[78 + d];
+                        const diff = av - fB[78 + d];
+                        const jointIdx = (d / 3) | 0;
+                        const w = (jointIdx > 0 && jointIdx % 4 === 0) ? 1.35 : 0.9;
+                        hand2D += diff * diff * w;
+                    }
+                    const g2A = (prepA.geom2 && prepA.geom2[idxA]) || extractHandGeometry(fA, 78);
+                    const g2B = (prepB.geom2 && prepB.geom2[idxB]) || extractHandGeometry(fB, 78);
+                    let geom2D = 0;
+                    for (let k = 0; k < 15; k++) {
+                        const gd = g2A[k] - g2B[k];
+                        geom2D += gd * gd;
+                    }
+                    const dxA = mirror ? -fA[142] : fA[142];
+                    const ddx = dxA - fB[142];
+                    const ddy = fA[143] - fB[143];
+                    const ddist = fA[144] - fB[144];
+                    const relSq = ddx * ddx + ddy * ddy + ddist * ddist;
+                    secSq = hand2D * 0.25 + geom2D * 0.20 + relSq * 0.50;
+                } else if (hasH2A !== hasH2B) {
+                    secSq = 0.36;
+                }
+            }
+
+            const cost = Math.sqrt(poseSq * 0.68 + velSq * 0.9 + trajSq + secSq);
             const minPrev = Math.min(prev[j], curr[j - 1], prev[j - 1]);
             curr[j] = cost + minPrev;
         }
@@ -1272,8 +1389,17 @@ export class SequenceClassifier {
     get size() { return this.templates.length; }
     get labels() { return [...new Set(this.templates.map(t => t.label))]; }
 
-    predict(testFrames, faceContext = null) {
+    predict(testFrames, faceContext = null, targetLabel = null) {
         if (this.templates.length === 0 || !testFrames || testFrames.length < 8) {
+            return { label: null, confidence: 0, distance: Infinity, usedFace: false };
+        }
+
+        const normTarget = targetLabel ? String(targetLabel).trim().toUpperCase() : null;
+        const pool = normTarget
+            ? this.templates.filter(t => String(t.label).trim().toUpperCase() === normTarget)
+            : this.templates;
+
+        if (pool.length === 0) {
             return { label: null, confidence: 0, distance: Infinity, usedFace: false };
         }
 
@@ -1291,7 +1417,7 @@ export class SequenceClassifier {
 
         const matches = [];
 
-        for (const t of this.templates) {
+        for (const t of pool) {
             let bestTplDist = Infinity;
             let bestTplUsedFace = false;
 
@@ -1336,7 +1462,7 @@ export class SequenceClassifier {
         }
 
         const voteRatio = totalVote > 0 ? (bestVote / totalVote) : 1;
-        const distScore = Math.max(0, Math.min(1, 1 - minDistance / 0.42));
+        const distScore = Math.max(0, Math.min(1, 1 - minDistance / 0.58));
         let confidence = Math.round((distScore * 0.82 + voteRatio * distScore * 0.18) * 100);
         confidence = clamp(confidence, 0, 99);
 
