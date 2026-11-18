@@ -499,6 +499,66 @@
         border-radius: 5px;
         font-family: monospace;
     }
+
+    /* Dedicated Camera Mode Switcher (Static KNN vs Dynamic DTW) */
+    .cam-mode-switcher {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    @media (max-width: 640px) {
+        .cam-mode-switcher {
+            grid-template-columns: 1fr;
+        }
+    }
+    .cam-mode-tab {
+        border: 2px solid var(--border-light);
+        background: #f8fafc;
+        border-radius: var(--radius-md);
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        transition: all 0.2s ease;
+        font-family: var(--font-main);
+    }
+    .cam-mode-tab:hover {
+        border-color: rgba(108, 92, 231, 0.4);
+        background: #fff;
+    }
+    .cam-mode-tab.active-static {
+        background: linear-gradient(135deg, #f3f0ff 0%, #ede9fe 100%);
+        border-color: #6c5ce7;
+        box-shadow: 0 4px 14px rgba(108, 92, 231, 0.14);
+    }
+    .cam-mode-tab.active-dynamic {
+        background: linear-gradient(135deg, #e0f2fe 0%, #e0e7ff 100%);
+        border-color: #0284c7;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);
+    }
+    .cam-mode-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        background: #e2e8f0;
+        color: #475569;
+    }
+    .cam-mode-tab.active-static .cam-mode-icon {
+        background: #6c5ce7;
+        color: #fff;
+    }
+    .cam-mode-tab.active-dynamic .cam-mode-icon {
+        background: #0284c7;
+        color: #fff;
+    }
 </style>
 @endpush
 
@@ -537,6 +597,35 @@
     {{-- ================= LEFT / MAIN: FLEXIBLE CAMERA WORKSPACE ================= --}}
     <div class="studio-main-col">
         <div class="card" style="padding: 1.35rem; margin-bottom: 1.25rem;">
+
+            {{-- 0. DEDICATED STATIC VS DYNAMIC CAMERA MODE SWITCHER --}}
+            <div class="cam-mode-switcher" id="cam-mode-switcher">
+                <button type="button" class="cam-mode-tab active-static" id="btn-cam-mode-static" data-cam-mode="static">
+                    <div class="cam-mode-icon"><i class="fa-solid fa-hand"></i></div>
+                    <div>
+                        <div style="font-weight: 900; font-size: 0.95rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.4rem;">
+                            <span>Kamera Isyarat Statik (Pegun)</span>
+                            <span class="role-badge" style="background: #6c5ce7; color: #fff; font-size: 0.68rem;">KNN</span>
+                        </div>
+                        <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.1rem;">
+                            Huruf A–Y &amp; Nombor 0–9 (Tangan dipegang pegun tanpa gangguan gerakan DTW)
+                        </div>
+                    </div>
+                </button>
+
+                <button type="button" class="cam-mode-tab" id="btn-cam-mode-dynamic" data-cam-mode="dynamic">
+                    <div class="cam-mode-icon"><i class="fa-solid fa-film"></i></div>
+                    <div>
+                        <div style="font-weight: 900; font-size: 0.95rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.4rem;">
+                            <span>Kamera Isyarat Dinamik (Gerakan)</span>
+                            <span class="role-badge" style="background: #0284c7; color: #fff; font-size: 0.68rem;">DTW + Wajah</span>
+                        </div>
+                        <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.1rem;">
+                            J, Z, 10, Salam, Keluarga, Perasaan &amp; Perkataan (Klip urutan 30-frame terasing)
+                        </div>
+                    </div>
+                </button>
+            </div>
 
             {{-- 1. TARGET SIGN BAR (WITH STEPPER, CATEGORY FILTER & CHIPS) --}}
             <div class="target-selector-box">
@@ -597,7 +686,7 @@
                         @foreach($categories as $cat)
                             <optgroup label="{{ $cat->name }}">
                                 @foreach($cat->signs as $s)
-                                    <option value="{{ $s->label }}">{{ $s->word }} ({{ $s->label }})</option>
+                                    <option value="{{ strtoupper($s->label) }}" data-static="{{ $s->is_static ? '1' : '0' }}">{{ $s->word }} ({{ $s->label }})</option>
                                 @endforeach
                             </optgroup>
                         @endforeach
@@ -612,6 +701,7 @@
                                     class="sign-chip"
                                     data-label="{{ strtoupper($s->label) }}"
                                     data-cat="cat-{{ $cat->id }}"
+                                    data-static="{{ $s->is_static ? '1' : '0' }}"
                                     title="{{ $s->word }} ({{ $cat->name }})">
                                 <span>{{ $s->word }}</span>
                                 <span class="chip-count" data-chip-count="{{ strtoupper($s->label) }}">0</span>
@@ -721,8 +811,10 @@
                 {{-- Top HUD --}}
                 <div class="studio-hud" id="studio-hud" style="display: none;">
                     <div class="hud-stack">
+                        <span class="hud-pill" id="hud-cam-mode" style="background: rgba(108, 92, 231, 0.92);">🖐️ Mod Statik</span>
                         <span class="hud-pill warn" id="hud-hand">Tiada tangan</span>
                         <span class="hud-pill" id="hud-face" style="background: rgba(14, 116, 144, 0.85);">Wajah: Memuat...</span>
+                        <span class="hud-pill" id="hud-dtw-buffer" style="display: none; background: rgba(2, 132, 199, 0.88);">Jejak DTW: 0/30f</span>
                         <span class="hud-pill target">Sasaran: <span id="hud-target-label">A</span></span>
                     </div>
                     <div class="hud-stack">
@@ -784,9 +876,9 @@
 
                     <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-muted);">
                         <span>Pintasan:</span>
-                        <span><kbd class="kbd-tag">Space</kbd> 1x</span>
-                        <span><kbd class="kbd-tag">B</kbd> Statik</span>
-                        <span><kbd class="kbd-tag">G</kbd> Gerakan</span>
+                        <span id="kbd-static-1"><kbd class="kbd-tag">Space</kbd> 1x Statik</span>
+                        <span id="kbd-static-burst"><kbd class="kbd-tag">B</kbd> Burst Statik</span>
+                        <span id="kbd-dynamic-seq" style="display: none;"><kbd class="kbd-tag">Space</kbd> / <kbd class="kbd-tag">G</kbd> Rakam Gerakan</span>
                         <span><kbd class="kbd-tag">T</kbd> Uji</span>
                     </div>
                 </div>
@@ -802,15 +894,22 @@
                                 <option value="5">5 saat (Jarak Jauh)</option>
                             </select>
                         </div>
-                        <div class="rec-field">
+                        <div class="rec-field" id="field-burst-count">
                             <label for="cfg-burst-count">Bil. Sampel Statik (Burst)</label>
                             <input type="number" id="cfg-burst-count" min="5" max="200" step="5" value="30">
                         </div>
-                        <div class="rec-field">
-                            <label for="cfg-seq-frames">Frame Klip Gerakan (DTW)</label>
+                        <div class="rec-field" id="field-seq-mode" style="display: none;">
+                            <label for="cfg-seq-mode">Mod Rakaman Gerakan</label>
+                            <select id="cfg-seq-mode">
+                                <option value="auto" selected>Auto Mula–Gerak–Tamat</option>
+                                <option value="manual">Bilangan Frame Tetap (Manual)</option>
+                            </select>
+                        </div>
+                        <div class="rec-field" id="field-seq-frames" style="display: none;">
+                            <label for="cfg-seq-frames">Had Frame Klip (DTW)</label>
                             <input type="number" id="cfg-seq-frames" min="10" max="90" step="5" value="30">
                         </div>
-                        <div class="rec-field">
+                        <div class="rec-field" id="field-burst-interval">
                             <label for="cfg-burst-interval">Selang Statik (Kelajuan)</label>
                             <select id="cfg-burst-interval">
                                 <option value="50">50ms (Sangat Pantas)</option>
@@ -829,13 +928,13 @@
             {{-- 5. RECORDING & LIVE ACTION BUTTONS --}}
             <div class="studio-btn-row">
                 <button type="button" class="btn btn-primary" id="btn-record-one" disabled>
-                    <i class="fa-solid fa-record-vinyl"></i> Rakam 1 Sampel
+                    <i class="fa-solid fa-record-vinyl"></i> Rakam 1 Sampel Statik
                 </button>
                 <button type="button" class="btn btn-accent" id="btn-record-burst" disabled>
                     <i class="fa-solid fa-burst"></i> <span id="lbl-record-burst">Rakam Statik (30)</span>
                 </button>
-                <button type="button" class="btn btn-secondary" id="btn-record-sequence" disabled style="background: linear-gradient(135deg, #0984e3, #6c5ce7); color: #fff;">
-                    <i class="fa-solid fa-film"></i> <span id="lbl-record-seq">Rakam Gerakan (30f)</span>
+                <button type="button" class="btn btn-secondary" id="btn-record-sequence" disabled style="display: none; background: linear-gradient(135deg, #0284c7, #6c5ce7); color: #fff;">
+                    <i class="fa-solid fa-film"></i> <span id="lbl-record-seq">Rakam Auto Mula–Gerak–Tamat</span>
                 </button>
                 <button type="button" class="btn btn-danger" id="btn-cancel-record" style="display: none;">
                     <i class="fa-solid fa-xmark"></i> Batal Rakaman
@@ -853,14 +952,22 @@
         <div class="card" style="padding: 1.25rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
                 <div>
-                    <h3 style="font-size: 1.15rem; margin: 0;">
-                        <i class="fa-solid fa-flask" style="color: #6c5ce7;"></i> Uji Model AI Secara Langsung
+                    <h3 style="font-size: 1.15rem; margin: 0;" id="live-tester-title">
+                        <i class="fa-solid fa-flask" style="color: #6c5ce7;"></i> Uji Kamera Statik (KNN Sahaja)
                     </h3>
-                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.15rem 0 0;">
-                        Keputusan juga dipaparkan terus pada skrin kamera di atas apabila ujian aktif.
+                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.15rem 0 0;" id="live-tester-desc">
+                        Menguji bentuk jari pegun secara terasing tanpa gangguan gerakan DTW.
                     </p>
                 </div>
-                <div style="display: flex; gap: 0.45rem;">
+                <div style="display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center;">
+                    <div id="live-tester-mode-wrap" style="display: none; gap: 0.25rem; background: #f1f5f9; padding: 0.2rem; border-radius: 8px;">
+                        <button type="button" class="cam-tool-btn active" id="btn-test-mode-open" title="Uji semua templat gerakan serentak">
+                            Open-Set
+                        </button>
+                        <button type="button" class="cam-tool-btn" id="btn-test-mode-target" title="Simulasi penilaian ketat pelajar untuk isyarat sasaran">
+                            Simulasi Pelajar
+                        </button>
+                    </div>
                     <button type="button" class="cam-tool-btn" id="btn-reload-model" title="Muat semula dataset AI terkini">
                         <i class="fa-solid fa-rotate"></i> Segar Semula Model
                     </button>
@@ -991,11 +1098,18 @@
         drawFaceAnchors,
         evaluateFaceSignBoost,
         isPinkyUpShape,
+        isIndexPointingShape,
+        trimIdleSequenceFrames,
+        extractPoseContext,
+        selectHandsOrder,
+        buildMultimodalVector,
+        drawPoseAnchors,
+        getEffectiveFaceRule,
         KnnClassifier,
         PredictionSmoother,
         HandMotionTracker,
-        SequenceClassifier,
-        SequenceBuffer
+        MotionSegmenter,
+        DynamicGestureEngine
     } from "{{ asset('js/gesture-ai.js') }}";
 
     const ROUTES = {
@@ -1015,24 +1129,35 @@
 
     let handLandmarker = null;
     let faceLandmarker = null;
+    let poseLandmarker = null;
     let visionRuntimePromise = null;
     let initPromise = null;
     let faceInitPromise = null;
+    let poseInitPromise = null;
     let stream = null;
     let running = false;
     let latestLandmarks = null;
     let allHandsLandmarks = [];
+    let allHandsHandednesses = [];
     let enableFaceAi = true;
     let latestFaceLandmarks = null;
     let latestFaceBlendshapes = null;
     let latestFaceContext = null;
+    let latestPoseLandmarks = null;
+    let latestPoseContext = null;
+    let lastPrimaryWrist = null;
+    let prevPrimaryWristForVec = null;
     let faceFrameTick = 0;
+    let auxFrameTick = 0;
     let lastHandTs = -1;
     let lastFaceTs = -1;
+    let lastPoseTs = -1;
     let busy = false;
     let cancelRequested = false;
 
     // Flexible UI State
+    let studioCameraMode = "static"; // "static" (KNN only) | "dynamic" (DTW + Motion only)
+    let liveTestMode = "open-set"; // "open-set" (all templates) | "target-locked" (student simulation)
     let showSkeleton = true;
     let showJointNumbers = false;
     let isMirrored = true;
@@ -1040,12 +1165,149 @@
     let numHands = 1;
     let minConfidence = 0.55;
     let listFilterMode = "all";
+    let lastDynamicTestMatch = { label: null, text: "", pct: "0%", time: 0 };
 
     const motionTracker = new HandMotionTracker(45);
-    const seqClassifier = new SequenceClassifier(30);
-    const seqBuffer = new SequenceBuffer(45);
+    const segmenter = new MotionSegmenter();
+    const dynamicEngine = new DynamicGestureEngine({ audience: "studio" });
     let counts = @json((object) $sampleCounts);
     let sequenceCounts = @json((object) $sequenceCounts);
+
+    // Map of label -> boolean isStatic from curriculum chips
+    const signStaticMap = {};
+    document.querySelectorAll(".sign-chip").forEach(chip => {
+        if (chip.dataset.label) {
+            signStaticMap[chip.dataset.label] = chip.dataset.static === "1";
+        }
+    });
+
+    function isLabelForCurrentMode(label) {
+        if (!label) return false;
+        const lbl = label.toUpperCase();
+        if (lbl in signStaticMap) {
+            return studioCameraMode === "static" ? signStaticMap[lbl] : !signStaticMap[lbl];
+        }
+        // Fallback if custom label not in chips: check if it has sequence samples vs static samples
+        if (studioCameraMode === "dynamic") {
+            return (sequenceCounts[lbl] || 0) > 0 || !isHandOnlyLabel(lbl);
+        }
+        return (counts[lbl] || 0) > 0 || isHandOnlyLabel(lbl);
+    }
+
+    function applyChipAndDropdownFilters() {
+        const catVal = $("category-chip-filter")?.value || "ALL";
+        const wantStatic = studioCameraMode === "static" ? "1" : "0";
+
+        document.querySelectorAll(".sign-chip").forEach(chip => {
+            const matchCat = (catVal === "ALL" || chip.dataset.cat === catVal);
+            const matchMode = !chip.dataset.static || chip.dataset.static === wantStatic;
+            chip.style.display = (matchCat && matchMode) ? "" : "none";
+        });
+
+        const drop = $("sign-select-dropdown");
+        if (drop) {
+            drop.querySelectorAll("option[data-static]").forEach(opt => {
+                opt.hidden = opt.dataset.static !== wantStatic;
+            });
+            drop.querySelectorAll("optgroup").forEach(grp => {
+                const hasVisible = Array.from(grp.querySelectorAll("option")).some(o => !o.hidden);
+                grp.hidden = !hasVisible;
+            });
+        }
+    }
+
+    function setStudioCameraMode(mode) {
+        if (busy) {
+            setMsg("Batalkan rakaman aktif dahulu sebelum menukar mod kamera.", "err");
+            return;
+        }
+        studioCameraMode = mode === "dynamic" ? "dynamic" : "static";
+        const isDyn = studioCameraMode === "dynamic";
+
+        $("btn-cam-mode-static")?.classList.toggle("active-static", !isDyn);
+        $("btn-cam-mode-dynamic")?.classList.toggle("active-dynamic", isDyn);
+
+        // Toggle Recording Buttons & Settings Fields per Camera Mode
+        $("btn-record-one").style.display = isDyn ? "none" : "";
+        $("btn-record-burst").style.display = isDyn ? "none" : "";
+        $("btn-record-sequence").style.display = isDyn ? "" : "none";
+
+        $("field-burst-count").style.display = isDyn ? "none" : "";
+        $("field-burst-interval").style.display = isDyn ? "none" : "";
+        $("field-seq-mode").style.display = isDyn ? "" : "none";
+        $("field-seq-frames").style.display = isDyn ? "" : "none";
+
+        $("kbd-static-1").style.display = isDyn ? "none" : "";
+        $("kbd-static-burst").style.display = isDyn ? "none" : "";
+        $("kbd-dynamic-seq").style.display = isDyn ? "" : "none";
+
+        // Auto-configure two-hand + Pose tracking in Dynamic mode
+        numHands = isDyn ? 2 : 1;
+        if ($("hands-label")) $("hands-label").textContent = `${numHands} Tangan`;
+        $("btn-toggle-hands")?.classList.toggle("active", numHands === 2);
+        if (handLandmarker) {
+            handLandmarker.setOptions({ numHands }).catch(e => console.warn(e));
+        }
+        if (isDyn && running && !poseLandmarker) {
+            initPoseModel();
+        }
+
+        // Update HUD Pills & Live Tester Header
+        const hudMode = $("hud-cam-mode");
+        if (hudMode) {
+            hudMode.textContent = isDyn ? "🎬 Mod Dinamik (2 Tangan + Bahu)" : "🖐️ Mod Statik (KNN)";
+            hudMode.style.background = isDyn ? "rgba(2, 132, 199, 0.92)" : "rgba(108, 92, 231, 0.92)";
+        }
+        const hudDtw = $("hud-dtw-buffer");
+        if (hudDtw) {
+            hudDtw.style.display = isDyn ? "" : "none";
+        }
+        const testerModeWrap = $("live-tester-mode-wrap");
+        if (testerModeWrap) {
+            testerModeWrap.style.display = isDyn ? "inline-flex" : "none";
+        }
+
+        const testerTitle = $("live-tester-title");
+        const testerDesc = $("live-tester-desc");
+        if (testerTitle) {
+            testerTitle.innerHTML = isDyn
+                ? '<i class="fa-solid fa-film" style="color: #0284c7;"></i> Uji Kamera Dinamik (Auto Gerakan + Bahu + 2 Tangan)'
+                : '<i class="fa-solid fa-hand" style="color: #6c5ce7;"></i> Uji Kamera Statik (KNN Pegun Sahaja)';
+        }
+        if (testerDesc) {
+            testerDesc.textContent = isDyn
+                ? (liveTestMode === "open-set"
+                    ? "Mod Open-Set: Mengesan semua templat DTW & J/Z sebaik sahaja gerakan tamat."
+                    : "Simulasi Pelajar (Target-Locked): Menguji isyarat sasaran mengikut peraturan ketat murid & Mod Cermin.")
+                : "Menguji bentuk jari pegun (KNN) secara terasing tanpa gangguan gerakan DTW.";
+        }
+
+        const newSignType = $("new-sign-type");
+        if (newSignType) newSignType.value = isDyn ? "0" : "1";
+
+        // Reset buffers so switching modes starts fresh
+        motionTracker.reset();
+        segmenter.reset();
+        smoother.reset();
+        lastPrimaryWrist = null;
+        prevPrimaryWristForVec = null;
+        lastDynamicTestMatch = { label: null, text: "", pct: "0%", time: 0 };
+        if (testing) updateTestDisplay("—", "0%", "0%");
+
+        applyChipAndDropdownFilters();
+        updateRecSummary();
+
+        // Ensure active sign matches the selected camera mode
+        const currentLabel = getActiveLabel();
+        if (!isLabelForCurrentMode(currentLabel)) {
+            const avail = getKnownLabels();
+            if (avail.length > 0) setActiveLabel(avail[0]);
+        } else {
+            updateActiveSignInfo(true);
+        }
+
+        try { localStorage.setItem("gs_ai_studio_cam_mode", studioCameraMode); } catch {}
+    }
 
     // Ordered list of known labels for Prev / Next stepping
     function getKnownLabels() {
@@ -1077,9 +1339,17 @@
         const cd = Number($("cfg-countdown").value || 0);
         const burst = Math.max(5, Math.min(200, Number($("cfg-burst-count").value || 30)));
         const seq = Math.max(10, Math.min(90, Number($("cfg-seq-frames").value || 30)));
-        $("rec-summary-pill").innerHTML = `Detik: ${cd}s &bull; Statik: ${burst} &bull; Gerakan: ${seq}f`;
+        const seqMode = $("cfg-seq-mode")?.value || "auto";
+        if (studioCameraMode === "dynamic") {
+            const modeText = seqMode === "auto" ? "Auto Mula–Gerak–Tamat" : `Manual ${seq}f`;
+            $("rec-summary-pill").innerHTML = `Mod Dinamik &bull; Detik: ${cd}s &bull; ${modeText}`;
+        } else {
+            $("rec-summary-pill").innerHTML = `Mod Statik &bull; Detik: ${cd}s &bull; Burst: ${burst}`;
+        }
         $("lbl-record-burst").textContent = `Rakam Statik (${burst})`;
-        $("lbl-record-seq").textContent = `Rakam Gerakan (${seq}f)`;
+        $("lbl-record-seq").textContent = seqMode === "auto"
+            ? "Rakam Auto Mula–Gerak–Tamat"
+            : `Rakam Klip Gerakan DTW (${seq}f)`;
     }
 
     function syncChipCountsAndActive() {
@@ -1089,8 +1359,8 @@
             chip.classList.toggle("active", lbl === active);
             const badge = chip.querySelector("[data-chip-count]");
             if (badge) {
-                const totalForSign = (counts[lbl] || 0) + (sequenceCounts[lbl] || 0);
-                badge.textContent = totalForSign;
+                const isStaticChip = chip.dataset.static !== "0";
+                badge.textContent = isStaticChip ? (counts[lbl] || 0) : (sequenceCounts[lbl] || 0);
             }
         });
     }
@@ -1261,6 +1531,43 @@
         return faceInitPromise;
     }
 
+    async function initPoseModel() {
+        if (poseLandmarker) return poseLandmarker;
+        if (poseInitPromise) return poseInitPromise;
+
+        poseInitPromise = (async () => {
+            try {
+                const { mod, fileset } = await getVisionRuntime();
+                const { PoseLandmarker } = mod;
+                const poseOptions = delegate => ({
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                        delegate,
+                    },
+                    runningMode: "VIDEO",
+                    numPoses: 1,
+                    minPoseDetectionConfidence: 0.45,
+                    minPosePresenceConfidence: 0.45,
+                    minTrackingConfidence: 0.45,
+                });
+                try {
+                    poseLandmarker = await PoseLandmarker.createFromOptions(fileset, poseOptions("GPU"));
+                } catch (e) {
+                    console.warn("PoseLandmarker GPU gagal, guna CPU:", e);
+                    poseLandmarker = await PoseLandmarker.createFromOptions(fileset, poseOptions("CPU"));
+                }
+                return poseLandmarker;
+            } catch (err) {
+                console.warn("Gagal memuatkan PoseLandmarker (fallback trajektori kamera):", err);
+                return null;
+            } finally {
+                poseInitPromise = null;
+            }
+        })();
+
+        return poseInitPromise;
+    }
+
     async function initModel() {
         if (handLandmarker) return handLandmarker;
         if (initPromise) return initPromise;
@@ -1288,6 +1595,9 @@
                 }
                 if (enableFaceAi && !faceLandmarker) {
                     initFaceModel();
+                }
+                if (studioCameraMode === "dynamic" && !poseLandmarker) {
+                    initPoseModel();
                 }
                 if (running) {
                     setMsg("Kamera & Model AI aktif. Sedia untuk merakam.", "ok");
@@ -1369,10 +1679,11 @@
             lastVideoTime = -1;
 
             if (!handLandmarker) {
-                setMsg("Kamera dibuka! Memuatkan pengesan sendi & wajah AI...");
+                setMsg("Kamera dibuka! Memuatkan pengesan sendi, bahu & wajah AI...");
                 initModel();
             } else {
                 if (enableFaceAi && !faceLandmarker) initFaceModel();
+                if (studioCameraMode === "dynamic" && !poseLandmarker) initPoseModel();
                 setMsg("Kamera aktif. Tunjukkan isyarat tangan anda.", "ok");
             }
 
@@ -1401,9 +1712,16 @@
         video.style.display = "none";
         latestLandmarks = null;
         allHandsLandmarks = [];
+        allHandsHandednesses = [];
         latestFaceLandmarks = null;
         latestFaceBlendshapes = null;
         latestFaceContext = null;
+        latestPoseLandmarks = null;
+        latestPoseContext = null;
+        lastPrimaryWrist = null;
+        prevPrimaryWristForVec = null;
+        segmenter.reset();
+        motionTracker.reset();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         $("studio-placeholder").style.display = "flex";
         $("studio-hud").style.display = "none";
@@ -1435,8 +1753,30 @@
                 console.warn("Detect glitch:", err);
             }
 
-            // Interleaved FaceLandmarker detection (every 2nd frame for smooth FPS)
-            if (enableFaceAi && faceLandmarker && (++faceFrameTick % 2) === 0) {
+            // Interleaved PoseLandmarker (even ticks in dynamic mode) + FaceLandmarker detection
+            if (studioCameraMode === "dynamic") {
+                const tick = ++auxFrameTick;
+                if ((tick % 2) === 0 && poseLandmarker) {
+                    try {
+                        const poseTs = Math.max(performance.now(), lastPoseTs + 1);
+                        lastPoseTs = poseTs;
+                        const poseRes = poseLandmarker.detectForVideo(video, poseTs);
+                        latestPoseLandmarks = poseRes?.landmarks?.[0] || null;
+                    } catch (poseErr) {
+                        console.warn("Pose detect glitch:", poseErr);
+                    }
+                } else if (enableFaceAi && faceLandmarker) {
+                    try {
+                        const faceTs = Math.max(performance.now(), lastFaceTs + 1);
+                        lastFaceTs = faceTs;
+                        const faceRes = faceLandmarker.detectForVideo(video, faceTs);
+                        latestFaceLandmarks = faceRes?.faceLandmarks?.[0] || null;
+                        latestFaceBlendshapes = faceRes?.faceBlendshapes?.[0]?.categories || null;
+                    } catch (faceErr) {
+                        console.warn("Face detect glitch:", faceErr);
+                    }
+                }
+            } else if (enableFaceAi && faceLandmarker && (++faceFrameTick % 2) === 0) {
                 try {
                     const faceTs = Math.max(performance.now(), lastFaceTs + 1);
                     lastFaceTs = faceTs;
@@ -1454,13 +1794,23 @@
 
             if (res && res.landmarks && res.landmarks.length > 0) {
                 allHandsLandmarks = res.landmarks;
-                latestLandmarks = res.landmarks[0];
+                allHandsHandednesses = res.handednesses || [];
+                prevPrimaryWristForVec = lastPrimaryWrist;
+                const ordered = selectHandsOrder(allHandsLandmarks, allHandsHandednesses, "Right", lastPrimaryWrist);
+                latestLandmarks = ordered.primary;
+                lastPrimaryWrist = latestLandmarks?.[0] ? { x: latestLandmarks[0].x, y: latestLandmarks[0].y } : null;
             } else {
                 latestLandmarks = null;
                 allHandsLandmarks = [];
+                allHandsHandednesses = [];
+                lastPrimaryWrist = null;
+                prevPrimaryWristForVec = null;
             }
 
-            // Compute spatial Hand-to-Face anchor & expression context
+            // Compute Pose & spatial Hand-to-Face anchor contexts
+            latestPoseContext = (studioCameraMode === "dynamic" && latestPoseLandmarks)
+                ? extractPoseContext(latestPoseLandmarks)
+                : null;
             latestFaceContext = enableFaceAi
                 ? extractFaceContext(latestLandmarks, latestFaceLandmarks, latestFaceBlendshapes)
                 : null;
@@ -1487,31 +1837,53 @@
                 }
             }
 
-            // Draw subtle BIM face anchor dots & active hand-to-face link
+            // Draw Pose shoulder anchors in Dynamic mode & BIM face anchors
+            if (showSkeleton && studioCameraMode === "dynamic" && latestPoseContext?.hasPose) {
+                drawPoseAnchors(ctx, latestPoseLandmarks, canvas.width, canvas.height, latestPoseContext);
+            }
             if (showSkeleton && enableFaceAi && latestFaceLandmarks && latestFaceContext?.hasFace) {
                 drawFaceAnchors(ctx, latestFaceLandmarks, canvas.width, canvas.height, latestFaceContext);
             }
 
             if (latestLandmarks) {
                 motionTracker.push(latestLandmarks);
-                seqBuffer.push(buildFeatureVector(latestLandmarks, enableFaceAi ? latestFaceContext : null));
+
+                const hudDtw = $("hud-dtw-buffer");
+                if (hudDtw && studioCameraMode === "dynamic" && !testing) {
+                    const moving = !motionTracker.isStill(0.032);
+                    const poseTag = latestPoseContext?.hasPose ? "+Bahu" : "";
+                    hudDtw.textContent = moving
+                        ? `🎬 Gerak Aktif (${allHandsLandmarks.length}T${poseTag})`
+                        : `🎬 Sedia Auto-Klip (${allHandsLandmarks.length}T${poseTag})`;
+                }
 
                 if (showSkeleton) {
                     allHandsLandmarks.forEach((lm, handIdx) => drawSkeleton(lm, handIdx));
                 }
 
-                // Draw motion trail if J motion is detected OR when moving pinky
-                const jCheck = motionTracker.detectJMotion();
-                const isPinky = isPinkyUpShape(latestLandmarks);
-                if (jCheck.matched || (isPinky && !motionTracker.isStill(0.04))) {
-                    const trail = motionTracker.getTrail();
+                // Draw motion trail when J/Z active OR in Dynamic Camera Mode
+                const activeLbl = getActiveLabel();
+                const needJCheck = studioCameraMode !== "dynamic" || activeLbl === "J";
+                const needZCheck = studioCameraMode === "dynamic" && activeLbl === "Z";
+                const jCheck = needJCheck ? motionTracker.detectJMotion() : { matched: false };
+                const zCheck = needZCheck ? motionTracker.detectZMotion() : { matched: false };
+                const shouldDrawTrail = studioCameraMode === "dynamic"
+                    ? (segmenter.state === "CAPTURING" || !motionTracker.isStill(0.032))
+                    : (jCheck.matched || (isPinkyUpShape(latestLandmarks) && !motionTracker.isStill(0.04)));
+
+                if (shouldDrawTrail) {
+                    const trailJoint = activeLbl === "J" ? "pinky" : (activeLbl === "Z" ? "index" : "palm");
+                    const trail = motionTracker.getTrail(trailJoint);
+                    const isMatchedMotion = jCheck.matched || zCheck.matched;
                     if (trail.length > 1) {
                         ctx.save();
                         ctx.beginPath();
-                        ctx.strokeStyle = jCheck.matched ? "#2ed573" : "#ffeaa7";
+                        ctx.strokeStyle = isMatchedMotion ? "#2ed573" : "#38bdf8";
                         ctx.lineWidth = 5;
-                        ctx.shadowColor = jCheck.matched ? "#2ed573" : "#fdcb6e";
-                        ctx.shadowBlur = 10;
+                        ctx.lineCap = "round";
+                        ctx.lineJoin = "round";
+                        ctx.shadowColor = isMatchedMotion ? "#2ed573" : "#0284c7";
+                        ctx.shadowBlur = 12;
                         trail.forEach((pt, i) => {
                             const tx = pt.x * canvas.width;
                             const ty = pt.y * canvas.height;
@@ -1530,7 +1902,7 @@
                 hud.className = "hud-pill warn";
             }
 
-            if (testing) runTest();
+            if (testing && !busy) runTest();
 
             frames++;
             const now = performance.now();
@@ -1606,7 +1978,9 @@
                 hintEl.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> <strong>Panduan Isyarat J (Dinamik):</strong> Lukis bentuk cangkuk "J" di udara menggunakan jari kelengkeng.';
             } else if (label && !isHandOnlyLabel(label) && enableFaceAi) {
                 hintEl.style.display = "block";
-                hintEl.innerHTML = '<i class="fa-solid fa-face-smile"></i> <strong>Mod Hibrid Tangan + Wajah (78 ciri):</strong> Pastikan wajah kelihatan dalam kamera supaya kedudukan tangan pada zon muka &amp; ekspresi BIM turut dirakam.';
+                hintEl.innerHTML = studioCameraMode === "dynamic"
+                    ? '<i class="fa-solid fa-face-smile"></i> <strong>Mod Dinamik Multimodal (146 ciri):</strong> Pastikan 2 tangan, bahu &amp; wajah kelihatan jelas supaya konteks lengkap dirakam.'
+                    : '<i class="fa-solid fa-face-smile"></i> <strong>Mod Hibrid Tangan + Wajah (78 ciri):</strong> Pastikan wajah kelihatan dalam kamera supaya kedudukan tangan pada zon muka &amp; ekspresi BIM turut dirakam.';
             } else {
                 hintEl.style.display = "none";
             }
@@ -1658,6 +2032,17 @@
         return buildFeatureVector(latestLandmarks, useFace ? latestFaceContext : null);
     }
 
+    function captureDynamicFeatureVector(label = null) {
+        const useFace = enableFaceAi && (!label || !isHandOnlyLabel(label));
+        return buildMultimodalVector(
+            allHandsLandmarks,
+            allHandsHandednesses,
+            useFace ? latestFaceContext : null,
+            latestPoseContext,
+            prevPrimaryWristForVec
+        );
+    }
+
     async function saveSamples(label, samples) {
         const data = await postJson(ROUTES.store, { label, samples });
         renderCounts(data.counts, data.total_all, data.sequence_counts);
@@ -1681,7 +2066,7 @@
         setRecordButtons(false);
         try {
             const vec = captureFeatureVector(label);
-            const faceNote = vec.length >= 78 ? " + Wajah" : "";
+            const faceNote = (vec.length >= 78 && vec[77] > 0.5) ? " + Wajah" : "";
             const data = await saveSamples(label, [vec]);
             setMsg(`✔ Sampel "${data.label}"${faceNote} dirakam (jumlah statik: ${data.counts[data.label]}).`, "ok");
         } catch (e) {
@@ -1755,7 +2140,7 @@
             }
 
             if (!samples.length) throw new Error("Tiada tangan dikesan sepanjang rakaman.");
-            const hasFaceSamples = samples.some(s => s.length >= 78);
+            const hasFaceSamples = samples.some(s => s.length >= 78 && s[77] > 0.5);
             setMsg(`Menyimpan ${samples.length} sampel statik...`);
             const data = await saveSamples(label, samples);
             setMsg(`✔ ${data.saved} sampel statik "${data.label}"${hasFaceSamples ? " (+Konteks Wajah)" : ""} disimpan (jumlah: ${data.counts[data.label]}).`, "ok");
@@ -1784,6 +2169,7 @@
             return;
         }
 
+        const seqMode = $("cfg-seq-mode")?.value || "auto";
         const targetFrames = Math.max(10, Math.min(90, Number($("cfg-seq-frames").value || 30)));
         busy = true;
         cancelRequested = false;
@@ -1795,47 +2181,96 @@
         try {
             await runCountdown();
             cd.style.display = "flex";
-            cd.textContent = "GERAK!";
-            await sleep(350);
+            cd.textContent = seqMode === "auto" ? "SEDIA!" : "GERAK!";
+            await sleep(300);
             cd.style.display = "none";
 
-            const capturedFrames = [];
+            let capturedFrames = [];
             track.style.display = "block";
             fill.style.width = "0%";
             let lastCaptured = -1;
-            const deadline = performance.now() + 12000;
 
-            while (capturedFrames.length < targetFrames) {
-                if (!running) throw new Error("Kamera ditutup.");
-                if (cancelRequested) throw new Error("Rakaman dibatalkan.");
-                if (performance.now() > deadline) break;
+            if (seqMode === "auto") {
+                const maxAutoMs = Math.max(1800, Math.min(3600, targetFrames * 65));
+                const recSeg = new MotionSegmenter({ maxClipMs: maxAutoMs, minActiveFrames: 8, pauseMs: 280 });
+                const deadline = performance.now() + 14000;
+                setMsg(`Auto Mula–Gerak–Tamat "${label}": Mulakan isyarat & berhenti sekejap selepas tamat!`);
 
-                if (latestLandmarks && lastVideoTime !== lastCaptured) {
-                    lastCaptured = lastVideoTime;
-                    capturedFrames.push(captureFeatureVector(label));
-                    fill.style.width = (capturedFrames.length / targetFrames * 100) + "%";
-                    setMsg(`Merakam klip DTW "${label}": frame ${capturedFrames.length} / ${targetFrames} (Teruskan gerakan!)`);
-                } else if (!latestLandmarks) {
-                    setMsg(`Menunggu tangan... (${capturedFrames.length} / ${targetFrames})`, "err");
+                while (performance.now() <= deadline) {
+                    if (!running) throw new Error("Kamera ditutup.");
+                    if (cancelRequested) throw new Error("Rakaman dibatalkan.");
+
+                    const nowMs = performance.now();
+                    if (lastVideoTime !== lastCaptured || !latestLandmarks) {
+                        if (latestLandmarks) lastCaptured = lastVideoTime;
+                        const vec = latestLandmarks ? captureDynamicFeatureVector(label) : null;
+                        const res = recSeg.pushFrame({
+                            frameVec: vec,
+                            handsLm: allHandsLandmarks,
+                            primaryHand: latestLandmarks,
+                            faceContext: enableFaceAi ? latestFaceContext : null,
+                            timestampMs: nowMs,
+                        });
+
+                        if (res.event === "started") {
+                            setMsg(`🔴 Merakam gerakan "${label}"... Teruskan isyarat!`);
+                        } else if (res.state === "CAPTURING") {
+                            const pct = Math.min(95, Math.round(((res.durationMs || (nowMs - (recSeg.captureStartMs || nowMs))) / maxAutoMs) * 100));
+                            fill.style.width = Math.max(15, pct) + "%";
+                            setMsg(`🔴 Merakam "${label}" (${recSeg.clip.length} frame)... Berhenti sekejap untuk tamat.`);
+                        } else if (res.event === "too_short") {
+                            fill.style.width = "0%";
+                            setMsg(`Gerakan terlalu singkat (<8 frame). Cuba ulang isyarat "${label}"!`, "err");
+                        } else if (res.event === "completed" && Array.isArray(res.clip)) {
+                            capturedFrames = res.clip;
+                            fill.style.width = "100%";
+                            break;
+                        }
+                    }
+                    await sleep(25);
                 }
-                await sleep(25);
+            } else {
+                const deadline = performance.now() + 12000;
+                while (capturedFrames.length < targetFrames) {
+                    if (!running) throw new Error("Kamera ditutup.");
+                    if (cancelRequested) throw new Error("Rakaman dibatalkan.");
+                    if (performance.now() > deadline) break;
+
+                    if (latestLandmarks && lastVideoTime !== lastCaptured) {
+                        lastCaptured = lastVideoTime;
+                        capturedFrames.push(captureDynamicFeatureVector(label));
+                        fill.style.width = (capturedFrames.length / targetFrames * 100) + "%";
+                        setMsg(`Merakam klip DTW "${label}": frame ${capturedFrames.length} / ${targetFrames} (Teruskan gerakan!)`);
+                    } else if (!latestLandmarks) {
+                        setMsg(`Menunggu tangan... (${capturedFrames.length} / ${targetFrames})`, "err");
+                    }
+                    await sleep(25);
+                }
             }
 
             if (capturedFrames.length < 8) {
-                throw new Error("Gerakan terlalu pendek (<8 frame) atau tangan hilang daripada kamera.");
+                throw new Error("Gerakan terlalu pendek (<8 frame) atau tiada gerakan dikesan dalam masa had.");
             }
 
-            const hasFaceFrames = capturedFrames.some(f => f.length >= 78);
-            setMsg(`Menyimpan klip gerakan (${capturedFrames.length} frame) untuk "${label}"...`);
+            const cleanedFrames = trimIdleSequenceFrames(capturedFrames, 8);
+            const hasFaceFrames = cleanedFrames.some(f => f.length >= 78 && f[77] > 0.55);
+            const hasTwoHands = cleanedFrames.some(f => f.length >= 146 && f[141] >= 0.5);
+            const hasPose = cleanedFrames.some(f => f.length >= 146 && f[145] >= 0.5);
+            setMsg(`Menyimpan klip gerakan (${cleanedFrames.length} frame 146-ciri) untuk "${label}"...`);
             const data = await postJson(ROUTES.store, {
                 sample_type: "sequence",
                 label,
-                frames: capturedFrames,
+                frames: cleanedFrames,
             });
 
             renderCounts(data.counts, data.total_all, data.sequence_counts || {});
             classifierStale = true;
-            setMsg(`✔ Klip gerakan "${label}" (${capturedFrames.length} frame${hasFaceFrames ? " + Konteks Wajah" : ""}) berjaya disimpan!`, "ok");
+            const tags = [
+                hasTwoHands ? "2 Tangan" : null,
+                hasPose ? "Bahu" : null,
+                hasFaceFrames ? "Wajah" : null,
+            ].filter(Boolean).join(" + ");
+            setMsg(`✔ Klip gerakan "${label}" (${cleanedFrames.length}f${tags ? " • " + tags : ""}) berjaya disimpan!`, "ok");
         } catch (e) {
             setMsg("✖ " + e.message, "err");
         } finally {
@@ -1935,20 +2370,21 @@
         if (!resp.ok) throw new Error("Gagal memuatkan dataset (" + resp.status + ").");
         const data = await resp.json();
         classifier.load(data.samples || []);
-        seqClassifier.load(data.sequences || []);
+        dynamicEngine.setTemplates(data.sequences || []);
         classifierStale = false;
-        $("test-info").textContent = `${classifier.size} sampel statik (${classifier.labels.length} label), ${seqClassifier.size} klip gerakan DTW (${seqClassifier.labels.join(", ") || "tiada"})`;
+        $("test-info").textContent = `${classifier.size} sampel statik (${classifier.labels.length} label), ${dynamicEngine.size} klip gerakan DTW (${dynamicEngine.templateLabels.join(", ") || "tiada"})`;
     }
 
     async function startTest() {
         try {
             if (classifierStale) await loadClassifier();
-            if (classifier.labels.length === 0 && seqClassifier.labels.length === 0) {
+            if (classifier.labels.length === 0 && dynamicEngine.templateLabels.length === 0 && studioCameraMode === "static") {
                 $("test-info").textContent = "Pangkalan data belum mempunyai sampel untuk diuji.";
                 return;
             }
             smoother.reset();
-            seqBuffer.reset();
+            segmenter.reset();
+            lastDynamicTestMatch = { label: null, text: "", pct: "0%", time: 0 };
             testing = true;
             $("hud-live-test").style.display = "flex";
             $("btn-toggle-test").innerHTML = '<i class="fa-solid fa-stop"></i> Henti Uji';
@@ -1959,54 +2395,131 @@
 
     function stopTest() {
         testing = false;
+        segmenter.reset();
         $("hud-live-test").style.display = "none";
         $("btn-toggle-test").innerHTML = '<i class="fa-solid fa-play"></i> Mula Uji';
         updateTestDisplay("—", "0%", "0%");
     }
 
     function runTest() {
+        const activeFaceCtx = enableFaceAi ? latestFaceContext : null;
+        const nowMs = performance.now();
+
+        // =========================================================================
+        // MODE A: DYNAMIC CAMERA TESTER (Auto Mula–Gerak–Tamat Dual-Mode Engine)
+        // =========================================================================
+        if (studioCameraMode === "dynamic") {
+            const vec146 = latestLandmarks ? captureDynamicFeatureVector(liveTestMode === "target-locked" ? getActiveLabel() : null) : null;
+            const segRes = segmenter.pushFrame({
+                frameVec: vec146,
+                handsLm: allHandsLandmarks,
+                primaryHand: latestLandmarks,
+                faceContext: activeFaceCtx,
+                timestampMs: nowMs,
+            });
+
+            const hudDtw = $("hud-dtw-buffer");
+            if (hudDtw) {
+                hudDtw.textContent = segRes.state === "CAPTURING"
+                    ? `🔴 Rakam Uji (${segmenter.clip.length}f)`
+                    : (liveTestMode === "open-set" ? "🎬 Uji: Open-Set" : `🎬 Simulasi: ${getActiveLabel() || "?"}`);
+            }
+
+            if (segRes.event === "started") {
+                updateTestDisplay("🔴", "Mengesan gerakan (berhenti sekejap untuk nilai)...", "40%");
+                return;
+            }
+
+            if (segRes.event === "too_short") {
+                lastDynamicTestMatch = { label: "…", text: "Gerakan terlalu singkat (<8f). Ulang semula.", pct: "20%", time: nowMs };
+                updateTestDisplay(lastDynamicTestMatch.label, lastDynamicTestMatch.text, lastDynamicTestMatch.pct);
+                return;
+            }
+
+            if (segRes.event === "completed") {
+                const evalRes = dynamicEngine.evaluateClip({
+                    mode: liveTestMode,
+                    targetLabel: getActiveLabel(),
+                    clipFrames: segRes.clip,
+                    handsHistory: segRes.handsHistory,
+                    faceHistory: segRes.faceHistory,
+                    faceAiEnabled: enableFaceAi,
+                });
+                const conf = Math.max(0, Math.min(100, Math.round(evalRes.confidence || 0)));
+                $("test-info").textContent = evalRes.hint;
+
+                if (evalRes.matched) {
+                    lastDynamicTestMatch = {
+                        label: evalRes.label,
+                        text: `${conf}% (${evalRes.source.toUpperCase()} ⭐)`,
+                        pct: `${conf}%`,
+                        time: nowMs,
+                    };
+                } else if (evalRes.status === "mirror") {
+                    lastDynamicTestMatch = { label: "🪞", text: "Mod Cermin (0 Klip / Tiada Peraturan)", pct: "0%", time: nowMs };
+                } else if (evalRes.status === "need_face") {
+                    lastDynamicTestMatch = { label: "👤", text: "AI Wajah / Zon Wajah Diperlukan", pct: "0%", time: nowMs };
+                } else {
+                    lastDynamicTestMatch = {
+                        label: evalRes.label || "✖",
+                        text: `${conf}% (Tidak Sepadan)`,
+                        pct: `${conf}%`,
+                        time: nowMs,
+                    };
+                }
+                updateTestDisplay(lastDynamicTestMatch.label, lastDynamicTestMatch.text, lastDynamicTestMatch.pct);
+                return;
+            }
+
+            if (segRes.state === "CAPTURING") {
+                const prog = Math.min(75, 35 + Math.round((segRes.durationMs || 0) / 45));
+                updateTestDisplay("🔴", `Merakam gerakan (${segmenter.clip.length}f)... Berhenti sekejap untuk nilai`, `${prog}%`);
+                return;
+            }
+
+            if (lastDynamicTestMatch.label && (nowMs - lastDynamicTestMatch.time) < 2200) {
+                updateTestDisplay(lastDynamicTestMatch.label, lastDynamicTestMatch.text, lastDynamicTestMatch.pct);
+                return;
+            }
+
+            if (!latestLandmarks) {
+                updateTestDisplay("—", "Tunjukkan tangan di kamera untuk ujian dinamik", "0%");
+            } else if (liveTestMode === "target-locked") {
+                updateTestDisplay("…", `Simulasi Pelajar [${getActiveLabel()}] — Lakukan gerakan & jeda`, "15%");
+            } else {
+                updateTestDisplay("…", "Open-Set Sedia — Buat isyarat gerakan & berhenti sekejap", "15%");
+            }
+            return;
+        }
+
         if (!latestLandmarks) {
             smoother.push(null);
             updateTestDisplay("—", "0%", "0%");
             return;
         }
 
-        // 1. Direct Disambiguation for Pinky-Up shape: I (static) vs J (dynamic hook)
-        const isPinky = isPinkyUpShape(latestLandmarks);
-        if (isPinky && (classifier.labels.includes("I") || classifier.labels.includes("J") || seqClassifier.labels.includes("J"))) {
-            const jCheck = motionTracker.detectJMotion();
-            if (jCheck && jCheck.matched) {
-                const conf = jCheck.confidence || 95;
-                updateTestDisplay("J", conf + "% (Cangkuk J 🎬)", conf + "%");
-                smoother.push("J");
-                return;
-            } else {
-                updateTestDisplay("I", "95% (Isyarat I Pegun)", "95%");
-                smoother.push("I");
-                return;
-            }
+        // =========================================================================
+        // MODE B: STATIC CAMERA TESTER (100% Isolated to Static KNN Signs)
+        // Never triggers DTW sequences; requires steady hand posture.
+        // =========================================================================
+        if (!motionTracker.isStill(0.085)) {
+            updateTestDisplay("…", "Tahan tangan pegun (Mod Statik)...", "25%");
+            return;
         }
 
-        const activeFaceCtx = enableFaceAi ? latestFaceContext : null;
-
-        // 2. Dynamic sequence DTW check when hand is moving
-        if (seqClassifier.size > 0 && !motionTracker.isStill(0.05) && seqBuffer.length >= 15) {
-            const seqPred = seqClassifier.predict(seqBuffer.getFrames(), activeFaceCtx);
-            if (seqPred.confidence >= 60) {
-                const dtwBadge = seqPred.usedFace ? "DTW + Wajah 👤" : "DTW 🎬";
-                updateTestDisplay(seqPred.label, `${seqPred.confidence}% (${dtwBadge})`, seqPred.confidence + "%");
-                return;
-            }
+        if (isPinkyUpShape(latestLandmarks) && classifier.labels.includes("I")) {
+            updateTestDisplay("I", "95% (Isyarat I Pegun 🖐️)", "95%");
+            smoother.push("I");
+            return;
         }
 
-        // 3. Static KNN fallback (Multimodal 78-feature fusion when face context applies)
         const queryVec = buildFeatureVector(latestLandmarks, activeFaceCtx);
-        const { label, confidence, usedFace } = classifier.predict(queryVec, motionTracker, activeFaceCtx);
+        const { label, confidence, usedFace } = classifier.predict(queryVec, null, activeFaceCtx);
         const stable = smoother.push(confidence >= 40 ? label : null);
         const faceBoost = (stable && !isHandOnlyLabel(stable) && activeFaceCtx?.hasFace)
             ? evaluateFaceSignBoost(stable, activeFaceCtx)
             : { bonus: 0 };
-        const faceBadge = (usedFace || faceBoost.bonus !== 0) ? " + Wajah 👤" : "";
+        const faceBadge = (usedFace || faceBoost.bonus !== 0) ? " + Wajah 👤" : " (Statik 🖐️)";
         updateTestDisplay(stable ?? "?", confidence + "%" + faceBadge, confidence + "%");
     }
 
@@ -2119,9 +2632,9 @@
         panel.style.display = open ? "block" : "none";
         $("rec-settings-chevron").className = open ? "fa-solid fa-chevron-up" : "fa-solid fa-chevron-down";
     });
-    ["cfg-countdown", "cfg-burst-count", "cfg-seq-frames", "cfg-burst-interval"].forEach(id => {
-        $(id).addEventListener("input", updateRecSummary);
-        $(id).addEventListener("change", updateRecSummary);
+    ["cfg-countdown", "cfg-burst-count", "cfg-seq-frames", "cfg-burst-interval", "cfg-seq-mode"].forEach(id => {
+        $(id)?.addEventListener("input", updateRecSummary);
+        $(id)?.addEventListener("change", updateRecSummary);
     });
     $("cfg-confidence").addEventListener("input", async e => {
         const pct = Number(e.target.value);
@@ -2160,12 +2673,29 @@
     $("btn-prev-sign").addEventListener("click", () => stepSign(-1));
     $("btn-next-sign").addEventListener("click", () => stepSign(1));
 
+    // Dedicated Static vs Dynamic Camera Mode Switcher
+    $("btn-cam-mode-static")?.addEventListener("click", () => setStudioCameraMode("static"));
+    $("btn-cam-mode-dynamic")?.addEventListener("click", () => setStudioCameraMode("dynamic"));
+
+    // Dual-Mode Live Model Tester Switcher (Open-Set vs Simulasi Pelajar)
+    function setLiveTestMode(mode) {
+        liveTestMode = mode === "target-locked" ? "target-locked" : "open-set";
+        $("btn-test-mode-open")?.classList.toggle("active", liveTestMode === "open-set");
+        $("btn-test-mode-target")?.classList.toggle("active", liveTestMode === "target-locked");
+        segmenter.reset();
+        lastDynamicTestMatch = { label: null, text: "", pct: "0%", time: 0 };
+        if (studioCameraMode === "dynamic" && $("live-tester-desc")) {
+            $("live-tester-desc").textContent = liveTestMode === "open-set"
+                ? "Mod Open-Set: Mengesan semua templat DTW & J/Z sebaik sahaja gerakan tamat."
+                : "Simulasi Pelajar (Target-Locked): Menguji isyarat sasaran mengikut peraturan ketat murid & Mod Cermin.";
+        }
+    }
+    $("btn-test-mode-open")?.addEventListener("click", () => setLiveTestMode("open-set"));
+    $("btn-test-mode-target")?.addEventListener("click", () => setLiveTestMode("target-locked"));
+
     // Category Filter for Quick Sign Chips
-    $("category-chip-filter").addEventListener("change", e => {
-        const val = e.target.value;
-        document.querySelectorAll(".sign-chip").forEach(chip => {
-            chip.style.display = (val === "ALL" || chip.dataset.cat === val) ? "" : "none";
-        });
+    $("category-chip-filter").addEventListener("change", () => {
+        applyChipAndDropdownFilters();
     });
 
     // Quick Sign Chips Click (Event Delegation)
@@ -2176,7 +2706,7 @@
         }
     });
 
-    // Sample List Click: Select Target Sign OR Delete
+    // Sample List Click: Select Target Sign (and auto-switch camera mode if needed) OR Delete
     $("sample-list").addEventListener("click", e => {
         const delBtn = e.target.closest("[data-delete-label]");
         if (delBtn) {
@@ -2186,7 +2716,11 @@
         }
         const row = e.target.closest("[data-select-label]");
         if (row && row.dataset.selectLabel) {
-            setActiveLabel(row.dataset.selectLabel);
+            const clickedLbl = row.dataset.selectLabel;
+            if (!isLabelForCurrentMode(clickedLbl)) {
+                setStudioCameraMode(studioCameraMode === "static" ? "dynamic" : "static");
+            }
+            setActiveLabel(clickedLbl);
         }
     });
 
@@ -2255,6 +2789,7 @@
 
             const dropOpt = document.createElement("option");
             dropOpt.value = label;
+            dropOpt.dataset.static = isStatic ? "1" : "0";
             dropOpt.textContent = `${word} (${label})`;
             $("sign-select-dropdown").appendChild(dropOpt);
 
@@ -2263,9 +2798,12 @@
             chip.className = "sign-chip";
             chip.dataset.label = label;
             chip.dataset.cat = `cat-${categoryId}`;
+            chip.dataset.static = isStatic ? "1" : "0";
             chip.innerHTML = `<span>${escapeHtml(word)}</span><span class="chip-count" data-chip-count="${escapeHtml(label)}">0</span>`;
             $("quick-sign-chips").appendChild(chip);
 
+            signStaticMap[label] = isStatic;
+            setStudioCameraMode(isStatic ? "static" : "dynamic");
             setActiveLabel(label);
             $("new-sign-word").value = "";
             $("new-sign-label").value = "";
@@ -2297,11 +2835,15 @@
 
         if (e.code === "Space" && !busy && document.activeElement?.tagName !== "BUTTON") {
             e.preventDefault();
-            recordOne();
-        } else if (e.key?.toUpperCase() === "B" && !busy) {
+            if (studioCameraMode === "dynamic") {
+                recordSequence();
+            } else {
+                recordOne();
+            }
+        } else if (e.key?.toUpperCase() === "B" && !busy && studioCameraMode === "static") {
             e.preventDefault();
             recordBurst();
-        } else if (e.key?.toUpperCase() === "G" && !busy) {
+        } else if (e.key?.toUpperCase() === "G" && !busy && studioCameraMode === "dynamic") {
             e.preventDefault();
             recordSequence();
         } else if (e.key?.toUpperCase() === "T") {
@@ -2316,7 +2858,12 @@
     window.addEventListener("pagehide", stopCamera);
     window.addEventListener("beforeunload", () => stream?.getTracks().forEach(t => t.stop()));
 
-    updateRecSummary();
+    try {
+        const savedMode = localStorage.getItem("gs_ai_studio_cam_mode");
+        setStudioCameraMode(savedMode === "dynamic" ? "dynamic" : "static");
+    } catch {
+        setStudioCameraMode("static");
+    }
     renderCounts(counts, {{ $totalSamples }}, sequenceCounts);
     updateActiveSignInfo(true);
 </script>

@@ -96,7 +96,7 @@ class AiTrainingController extends Controller
             $data = $request->validate([
                 'label' => ['required', 'string', 'max:50'],
                 'frames' => ['required', 'array', 'min:8', 'max:120'], // Sequence of frames
-                'frames.*' => ['required', 'array', 'min:63', 'max:78'],
+                'frames.*' => ['required', 'array', 'min:63', 'max:146'],
                 'frames.*.*' => ['numeric'],
             ]);
 

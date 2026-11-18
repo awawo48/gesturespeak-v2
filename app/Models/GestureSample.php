@@ -30,45 +30,85 @@ class GestureSample extends Model
      * public/js/gesture-ai.js). Idempotent: normalising already-normalised data
      * returns the same numbers, so raw and exported CSVs can both be imported.
      *
-     * Supports 63 numbers (21 hand landmarks * x,y,z) as well as 78 numbers
-     * (63 hand coordinates + 15 normalized face-anchor & expression features).
+     * Supports:
+     * - 63 numbers: 21 primary hand landmarks * (x, y, z)
+     * - 78 numbers: 63 primary hand + 15 normalised face/trajectory context
+     * - 146 numbers: 78 v1 features + 63 second hand + 5 two-hand/pose context flags
      *
-     * @param  array<int, float>  $features  63 or 78 numbers
+     * @param  array<int, float>  $features  63, 78 or 146 numbers
      * @return array<int, float>
      */
     public static function normalise(array $features): array
     {
         $features = array_map('floatval', array_values($features));
-        [$ox, $oy, $oz] = [$features[0], $features[1], $features[2]];
+        $handNorm = self::normaliseHandSlice(array_slice($features, 0, 63));
 
+        $count = count($features);
+        if ($count < 78) {
+            return $handNorm;
+        }
+
+        $faceNorm = self::clampSlice(array_slice($features, 63, 15), -2.5, 2.5);
+        $base78 = array_merge($handNorm, $faceNorm);
+
+        if ($count < 146) {
+            return $base78;
+        }
+
+        $hand2Norm = self::normaliseHandSlice(array_slice($features, 78, 63));
+        $dwiNorm = self::clampSlice(array_slice($features, 141, 5), -3.0, 3.0);
+
+        return array_merge($base78, $hand2Norm, $dwiNorm);
+    }
+
+    /**
+     * Wrist-relative + scale-invariant normalisation for one 21-landmark hand slice (63 floats).
+     * Returns exact zeros when all landmarks are absent (e.g. inactive second hand).
+     *
+     * @param  array<int, float>  $slice
+     * @return array<int, float>
+     */
+    private static function normaliseHandSlice(array $slice): array
+    {
+        if (count($slice) < 63) {
+            $slice = array_pad($slice, 63, 0.0);
+        }
+
+        [$ox, $oy, $oz] = [$slice[0], $slice[1], $slice[2]];
         $rel = [];
         $maxAbs = 0.0;
+
         for ($i = 0; $i < 21; $i++) {
             foreach ([$ox, $oy, $oz] as $axis => $origin) {
-                $v = $features[$i * 3 + $axis] - $origin;
+                $v = $slice[$i * 3 + $axis] - $origin;
                 $rel[] = $v;
                 $maxAbs = max($maxAbs, abs($v));
             }
         }
 
-        $scale = $maxAbs > 1e-6 ? $maxAbs : 1.0;
-        $handNorm = array_map(fn ($v) => round($v / $scale, 5), $rel);
-
-        if (count($features) >= 78) {
-            $faceNorm = [];
-            for ($j = 63; $j < 78; $j++) {
-                $fv = max(-2.5, min(2.5, $features[$j]));
-                $faceNorm[] = round($fv, 5);
-            }
-
-            return array_merge($handNorm, $faceNorm);
+        if ($maxAbs <= 1e-6) {
+            return array_fill(0, 63, 0.0);
         }
 
-        return $handNorm;
+        return array_map(fn ($v) => round($v / $maxAbs, 5), $rel);
     }
 
     /**
-     * Normalise an array of sequence frames (each frame is 63 numbers).
+     * Clamp and round a context feature slice safely.
+     *
+     * @param  array<int, float>  $slice
+     * @return array<int, float>
+     */
+    private static function clampSlice(array $slice, float $min, float $max): array
+    {
+        return array_map(
+            fn ($v) => round(max($min, min($max, (float) $v)), 5),
+            $slice
+        );
+    }
+
+    /**
+     * Normalise an array of sequence frames (each frame is 63, 78 or 146 numbers).
      *
      * @param  array<int, array<int, float>>  $frames
      * @return array<int, array<int, float>>
