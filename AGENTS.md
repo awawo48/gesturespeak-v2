@@ -45,3 +45,12 @@ php artisan boost:install
 
 Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
 </laravel-boost-guidelines>
+
+## Sign Cilik UI Rulebook
+
+When creating or editing any UI view (`resources/views/**`), stylesheet (`public/css/**`), or UI script, read and follow [docs/UI-RULEBOOK.md](./docs/UI-RULEBOOK.md) as the authoritative source of truth. Non-negotiable invariants:
+
+- **Brand & Icons:** Always use **Sign Cilik** (never *GestureSpeak* in visible UI or `<title>`). Use `<x-sc-icon>` / `<x-sc-category-icon>` with custom SVGs in `public/media/icons/` — never use raw UI emojis in headings, buttons, stats, or badges.
+- **Palette & Quiet Chrome:** Use tokens in `public/css/app.css` (`#16324f`, `#0f2238`, `#26b0e5`, `#58caf3`, `#ffe942`, `#fffdf7`). Avoid AI-slop purple (`#6c5ce7` / `#8b5cf6`), neon gradient text, `2px dashed` card borders, or heavy `4px–6px` brutalist box-shadows on standard chrome.
+- **Typography & `CutePixel`:** `Fredoka` (`600`) for headings, `Nunito` (`400`–`700`) for body/labels, and `CutePixel` (`500`, `tabular-nums`) **only** for short telemetry, scores, student codes, PIN slots, and sign counts — never paragraphs.
+- **Layout, Focus & Zero Overflow:** Stick to the `4px` spacing grid and nested radii (`20px -> 16/12px -> 8/10px`). Keep Kiko mascot scoped strictly to `learn.*` and `quiz.*`. Ensure `:focus-visible` outlines, `44px` coarse-pointer targets, `100dvh`, and `scrollWidth === clientWidth` at both `1440px` and `390px`.
