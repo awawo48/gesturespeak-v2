@@ -18,7 +18,7 @@
 
     <div style="display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;">
         <button type="button" onclick="window.Kiko?.randomCheer(true)" class="btn" style="background: #ffffff; color: #16324f;">
-            🐾 Semangat Kiko!
+            <i class="fa-solid fa-robot" aria-hidden="true"></i> Semangat Kiko!
         </button>
 
         <div class="student-stars-box">

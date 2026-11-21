@@ -14,6 +14,8 @@ Setiap perubahan atau pembinaan paparan baharu (`home`, `auth/*`, `learn/*`, `qu
   2. **Mod Pembelajaran Kanak-Kanak (`learn/*`, `quiz/*`):** Ceria, mesra sentuhan (`>= 54px` untuk butang utama kanak-kanak), paparan angka ganjaran jelas, dan maskot bimbingan **Kiko** dibenarkan aktif.
   3. **Mod Portal Dewasa (`guardian/*`, `admin/*`):** Padat data, berfokus tugasan, hierarki kad sekata, tanpa dekorasi kartun berlebihan atau pop-up Kiko.
 - **Peraturan Maskot Kiko (`partials/kiko-mascot.blade.php`):**
+  - Kiko v2 ialah **robot kucing Holo-Pod menghadap kiri** (kepala *squircle* `#ffffff`, visor & garis `#16324f`, badan/telinga `#58caf3`, antena bintang & isyarat `#ffe942`, cahaya hologram `#d8f4fe`, pipi `#ff8fa3`) — memegang peranti Holo-Pod yang memancarkan kad isyarat tangan ke arah kiri supaya sesuai di sudut kanan bawah skrin. Jangan kembalikan kucing oren lama atau warna ungu.
+  - Reaksi muka & kad hologram berubah dinamik melalui `data-mood` (`happy`: ILY 🤟, `celebrate`: Thumbs-Up 👍, `encourage`: hati, `coach`: imbas tapak tangan ✋) + kelas `is-speaking` (mulut bercakap & gelombang suara) dan `is-poked` (terkejut `!`). Kekalkan API `window.Kiko`.
   - Hanya dimuatkan pada laluan `learn.*` dan `quiz.*` melalui [layouts/app.blade.php](file:///f:/gesture%20speak/gesturespeak-v2/resources/views/layouts/app.blade.php).
   - **Dilarang** dipaparkan pada halaman utama (`/`), log masuk (`/student/login`, `/login`), pendaftaran (`/register`), atau portal dewasa.
 
