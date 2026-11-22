@@ -20,6 +20,6 @@ class ExampleTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Saya Murid');
-        $response->assertSee('Ibu Bapa & Guru', false);
+        $response->assertSee('Ibu Bapa &amp; Guru', false);
     }
 }
