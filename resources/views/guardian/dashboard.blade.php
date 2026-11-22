@@ -40,17 +40,17 @@
 {{-- TEACHER: CLASS ANALYTICS + SEARCH --}}
 @if($isTeacher && $classStats)
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; margin-bottom: 1.5rem;">
-        <div class="card" style="border-left: 5px solid {{ $accent }};">
+        <div class="card">
             <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">🏫 Jumlah Murid</div>
             <div style="font-size: 2.2rem; font-weight: 900; color: {{ $accent }};">{{ $classStats['total'] }}</div>
             <div style="font-size: 0.8rem; color: var(--text-muted);">{{ $classStats['without_parent'] }} belum dipautkan ibu bapa</div>
         </div>
-        <div class="card" style="border-left: 5px solid var(--secondary);">
+        <div class="card">
             <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">📊 Purata Penguasaan</div>
             <div style="font-size: 2.2rem; font-weight: 900; color: var(--secondary);">{{ $classStats['average'] }}%</div>
             <div style="font-size: 0.8rem; color: var(--text-muted);">Keseluruhan kelas</div>
         </div>
-        <div class="card" style="border-left: 5px solid #ffa502;">
+        <div class="card">
             <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">🏆 Murid Teratas</div>
             <div style="font-size: 1.3rem; font-weight: 900; color: #e67e22; margin: 0.4rem 0;">
                 {{ $classStats['top'] ? $classStats['top']->name : '-' }}
@@ -59,7 +59,7 @@
                 {{ $classStats['top'] ? $classStats['top']->summary['overall'].'% dikuasai' : 'Belum ada data' }}
             </div>
         </div>
-        <div class="card" style="border-left: 5px solid var(--danger);">
+        <div class="card">
             <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">⚠️ Perlu Bimbingan</div>
             <div style="font-size: 2.2rem; font-weight: 900; color: var(--danger);">{{ $classStats['needs_help'] }}</div>
             <div style="font-size: 0.8rem; color: var(--text-muted);">Penguasaan bawah 30%</div>
@@ -146,7 +146,7 @@
 
                 {{-- PARENT: TEACHER NOTE / HOMEWORK HIGHLIGHT --}}
                 @if(! $isTeacher && ($child->teacher_note || $child->assignedCategory))
-                    <div style="background: #e8f4fd; border-left: 4px solid #0984e3; border-radius: var(--radius-sm); padding: 0.7rem 0.9rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                    <div style="background: #e8f4fd; border: 1px solid rgba(9, 132, 227, 0.24); border-radius: var(--radius-sm); padding: 0.7rem 0.9rem; margin-bottom: 1rem; font-size: 0.85rem;">
                         <div style="font-weight: 900; color: #0984e3; margin-bottom: 0.3rem;">
                             <i class="fa-solid fa-chalkboard-user"></i> Pesanan daripada {{ $child->teacherReviewer->name ?? 'Cikgu' }}
                         </div>

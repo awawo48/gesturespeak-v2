@@ -9,7 +9,8 @@
     $allowed = [
         'abjad-nombor', 'bintang-kuiz', 'buku', 'guru', 'haiwan',
         'ibu-bapa', 'kamera-ai', 'keluarga', 'keluarga-guru', 'kod-pin',
-        'pelajar', 'pelajar-cemerlang', 'robot-ai', 'suara-bm', 'trofi', 'ucapan',
+        'nombor', 'pelajar', 'pelajar-cemerlang', 'perasaan', 'robot-ai',
+        'soalan', 'suara-bm', 'trofi', 'ucapan',
     ];
     $src = $name === 'mascot'
         ? asset('media/brand/signcilik-icon.svg')

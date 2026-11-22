@@ -32,7 +32,7 @@
     </div>
 
     {{-- Visual Progress Bar (Immediate Feedback) --}}
-    <div class="progress-track" style="height: 12px; background: rgba(255, 255, 255, 0.25);">
+    <div class="progress-track" style="height: 16px; background-color: rgba(15, 34, 56, 0.24); background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.22) 0 8px, transparent 8px 11px); border-color: rgba(255, 255, 255, 0.55);">
         <div class="progress-fill" style="width: {{ $percent }}%; background: #ffffff;"></div>
     </div>
 </section>

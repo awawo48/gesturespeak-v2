@@ -243,6 +243,7 @@
     .kiko-holo-encourage,
     .kiko-holo-coach,
     .kiko-holo-poke,
+    .kiko-holo-speaking,
     .kiko-sound-waves {
         display: none;
     }
@@ -271,9 +272,11 @@
     .kiko-widget[data-mood="coach"] .kiko-mouth-focus,
     .kiko-widget[data-mood="coach"] .kiko-holo-coach { display: block; }
 
-    /* speaking: talking mouth + holo sound waves */
-    .kiko-widget.is-speaking .kiko-mouth:not(.kiko-mouth-talk) { display: none; }
+    /* speaking: talking mouth + speaker hologram + holo sound waves */
+    .kiko-widget.is-speaking .kiko-mouth:not(.kiko-mouth-talk),
+    .kiko-widget.is-speaking:not(.is-poked) .kiko-holo-icon:not(.kiko-holo-speaking) { display: none; }
     .kiko-widget.is-speaking .kiko-mouth-talk,
+    .kiko-widget.is-speaking:not(.is-poked) .kiko-holo-speaking,
     .kiko-widget.is-speaking .kiko-sound-waves { display: block; }
 
     /* poke: brief surprised face + "!" holo burst */
@@ -474,7 +477,7 @@
 
             {{-- Pocket Holo-Pod Device --}}
             <rect x="152" y="174" width="44" height="32" rx="11" fill="#16324f"/>
-            <rect x="159" y="180" width="30" height="20" rx="7" fill="#58caf3"/>
+            <rect x="159" y="180" width="30" height="20" rx="7" fill="#ffffff"/>
             <circle class="kiko-pod-lens" cx="167" cy="186" r="5.5" fill="#ffe942" stroke="#16324f" stroke-width="2.5"/>
             <circle cx="152" cy="194" r="9.5" fill="#ffffff" stroke="#16324f" stroke-width="4.2"/>
             <circle cx="198" cy="194" r="9.5" fill="#ffffff" stroke="#16324f" stroke-width="4.2"/>
@@ -538,6 +541,14 @@
                     <rect x="57" y="83" width="10" height="27" rx="5" fill="#ffe942"/>
                     <circle cx="62" cy="121" r="5.5" fill="#ffe942"/>
                     <path d="M41 92 L47 96 M83 92 L77 96 M39 112 L46 110 M85 112 L78 110" stroke="#58caf3" stroke-width="3" stroke-linecap="round"/>
+                </g>
+
+                {{-- Holo 6: Speaking — Yellow Speaker + Sound Waves --}}
+                <g class="kiko-holo-icon kiko-holo-speaking">
+                    <path d="M41 98 L48 98 L59 89 L59 119 L48 110 L41 110 Z"
+                          fill="#ffe942" stroke="#ffe942" stroke-width="3.2" stroke-linejoin="round"/>
+                    <path d="M66 96.5 Q71.5 104 66 111.5" fill="none" stroke="#ffe942" stroke-width="4.6" stroke-linecap="round"/>
+                    <path d="M75 91 Q83 104 75 117" fill="none" stroke="#ffe942" stroke-width="4.6" stroke-linecap="round"/>
                 </g>
 
                 {{-- Sound-Wave Arcs (Speaking state) --}}

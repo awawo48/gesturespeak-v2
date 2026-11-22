@@ -64,6 +64,9 @@ class DynamicViewsSmokeTest extends TestCase
         $dynResp->assertSee('drawPoseAnchors', false);
         $dynResp->assertSee('dynamic-mode-pill', false);
         $dynResp->assertSee('audience: "student"', false);
+        $dynResp->assertSee('StepSequenceClassifier', false);
+        $dynResp->assertSee('step-progress-bar', false);
+        $dynResp->assertSee('data.steps', false);
         $dynResp->assertDontSee('dynamicBannerText.innerHTML =', false);
 
         $staticResp = $this->actingAs($student, 'student')
@@ -112,5 +115,75 @@ class DynamicViewsSmokeTest extends TestCase
         $resp->assertSee('PoseLandmarker', false);
         $resp->assertSee('buildMultimodalVector', false);
         $resp->assertSee('drawPoseAnchors', false);
+        $resp->assertSee('btn-cam-mode-steps', false);
+        $resp->assertSee('steps-recorder-panel', false);
+        $resp->assertSee('StepSequenceClassifier', false);
+        $resp->assertSee('data.steps', false);
+    }
+
+    public function test_all_admin_portal_pages_render_cleanly_under_admin_layout(): void
+    {
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+            'status' => User::STATUS_APPROVED,
+        ]);
+
+        $cat = Category::create([
+            'slug' => 'ucapan',
+            'name' => 'Ucapan',
+            'name_en' => 'Greetings',
+            'description' => 'Ucapan harian',
+            'icon' => 'hand',
+            'color' => '#0284c7',
+            'sort_order' => 1,
+        ]);
+
+        Sign::create([
+            'category_id' => $cat->id,
+            'label' => 'BUKU',
+            'word' => 'Buku',
+            'meaning_en' => 'Book',
+            'instructions' => 'Buka tapak tangan.',
+            'is_static' => false,
+            'sort_order' => 1,
+        ]);
+
+        $student = Student::create([
+            'student_code' => 'MURID99',
+            'name' => 'Zara',
+            'age' => 7,
+            'pin' => '1234',
+            'avatar' => 'cat',
+        ]);
+
+        \App\Models\QuizAttempt::create([
+            'student_id' => $student->id,
+            'category_id' => $cat->id,
+            'score' => 4,
+            'total' => 5,
+            'stars' => 3,
+        ]);
+
+        $this->actingAs($admin)->get(route('admin.dashboard'))
+            ->assertStatus(200)
+            ->assertSee('Analisis aktiviti 7 hari terkini', false)
+            ->assertSee('80%', false)
+            ->assertSee('Liputan data AI mengikut modul BIM', false);
+
+        $this->actingAs($admin)->get(route('admin.users'))
+            ->assertStatus(200)
+            ->assertSee('Pengguna &amp; guru', false);
+
+        $this->actingAs($admin)->get(route('admin.students'))
+            ->assertStatus(200)
+            ->assertSee('MURID99', false);
+
+        $this->actingAs($admin)->get(route('admin.students.show', $student))
+            ->assertStatus(200)
+            ->assertSee('Zara', false);
+
+        $this->actingAs($admin)->get(route('admin.signs'))
+            ->assertStatus(200)
+            ->assertSee('BUKU', false);
     }
 }

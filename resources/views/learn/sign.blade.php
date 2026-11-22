@@ -113,7 +113,7 @@
         <div style="font-weight: 800; color: var(--text-muted); font-size: 0.92rem; margin-bottom: 0.3rem;">
             Isyarat {{ $currentIndex }} daripada {{ $totalSigns }}
         </div>
-        <div class="progress-track" style="height: 8px;">
+        <div class="progress-track" style="height: 14px;">
             <div class="progress-fill" style="width: {{ $totalSigns > 0 ? round(($currentIndex / $totalSigns) * 100) : 0 }}%;"></div>
         </div>
     </div>
@@ -174,7 +174,7 @@
             @endif
 
             {{-- STEP BY STEP GUIDANCE --}}
-            <div style="background: #f8fafc; border-radius: var(--radius-md); padding: 1rem 1.2rem; border-left: 4px solid var(--primary);">
+            <div style="background: #f8fafc; border-radius: var(--radius-md); padding: 1rem 1.2rem; border: 1px solid var(--border-light);">
                 <div style="font-weight: 800; font-size: 0.95rem; margin-bottom: 0.3rem;">
                     <i class="fa-solid fa-hand-holding-hand" style="color: var(--primary);"></i> Panduan Gerak Isyarat:
                 </div>
@@ -218,6 +218,7 @@
                     <i class="fa-solid fa-film"></i>
                     <span id="dynamic-banner-text">Isyarat Dinamik: Tiru gerakan tangan <strong>{{ $sign->word }}</strong> mengikut video panduan lalu berhenti sekejap.</span>
                 </div>
+                <div id="step-progress-bar" style="display: none; gap: 0.45rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.8rem;"></div>
             @endif
 
             <div class="camera-box" id="camera-box">
@@ -272,7 +273,7 @@
                         <span>Ketepatan Padanan AI</span>
                         <span id="confidence-pct" class="pixel-code">0%</span>
                     </div>
-                    <div class="progress-track" style="height: 10px;">
+                    <div class="progress-track" style="height: 14px;">
                         <div id="confidence-bar" class="progress-fill" style="width: 0%; background: var(--secondary);"></div>
                     </div>
                 </div>
@@ -319,7 +320,8 @@
         PredictionSmoother,
         HandMotionTracker,
         MotionSegmenter,
-        DynamicGestureEngine
+        DynamicGestureEngine,
+        StepSequenceClassifier
     } from "{{ asset('js/gesture-ai.js') }}";
 
     let handLandmarker = null;
@@ -358,6 +360,7 @@
     const faceHudPill = document.getElementById("face-hud-pill");
     const dynamicModePill = document.getElementById("dynamic-mode-pill");
     const dynamicBannerText = document.getElementById("dynamic-banner-text");
+    const stepProgressBar = document.getElementById("step-progress-bar");
     const feedbackOverlay = document.getElementById("feedback-overlay");
     const feedbackText = document.getElementById("feedback-text");
     const confidenceBar = document.getElementById("confidence-bar");
@@ -376,8 +379,34 @@
     const motionTracker = new HandMotionTracker(45);
     const segmenter = new MotionSegmenter();
     const dynamicEngine = new DynamicGestureEngine({ audience: "student" });
+    const stepClassifier = new StepSequenceClassifier();
     let mlReady = false;
     let dynamicEvalModeLabel = "Menyemak mod AI...";
+
+    function renderStepProgress(currentStep, stepNames) {
+        if (!stepProgressBar) return;
+        if (!stepNames || !stepNames.length) {
+            stepProgressBar.style.display = "none";
+            return;
+        }
+        stepProgressBar.style.display = "flex";
+        const nodes = [];
+        stepNames.forEach((name, idx) => {
+            const pill = document.createElement("span");
+            const done = idx < currentStep;
+            const active = idx === currentStep;
+            pill.style.cssText = `padding:0.25rem 0.65rem;border-radius:999px;font-size:0.78rem;font-weight:800;border:1.5px solid ${done ? "#059669" : (active ? "#0284c7" : "#cbd5e1")};background:${done ? "#d1fae5" : (active ? "#e0f2fe" : "#f1f5f9")};color:${done ? "#065f46" : (active ? "#0369a1" : "#64748b")};`;
+            pill.textContent = `${idx + 1}. ${name}${done ? " ✓" : ""}`;
+            nodes.push(pill);
+            if (idx < stepNames.length - 1) {
+                const arrow = document.createElement("span");
+                arrow.style.cssText = "color:#94a3b8;font-weight:800;font-size:0.8rem;";
+                arrow.textContent = "→";
+                nodes.push(arrow);
+            }
+        });
+        stepProgressBar.replaceChildren(...nodes);
+    }
 
     function setDynamicBannerRich(prefixText, word, suffixText) {
         if (!dynamicBannerText) return;
@@ -394,19 +423,29 @@
 
     function refreshDynamicModeIndicators() {
         if (isStaticSign) return;
+        const hasSteps = stepClassifier.hasTemplates(targetSign);
         const hasDtw = dynamicEngine.templateLabels.map(l => String(l).trim().toUpperCase()).includes(targetSign);
         const effRule = getEffectiveFaceRule(targetSign);
 
-        if (targetSign === "J" || targetSign === "Z") {
+        if (hasSteps) {
+            const meta = stepClassifier.getStepMeta(targetSign);
+            dynamicEvalModeLabel = `🔢 Urutan Langkah (${meta.totalSteps} Langkah)`;
+            setDynamicBannerRich("Mod Urutan Langkah: Ikuti setiap pose bagi isyarat ", signWord, ` mengikut turutan (${meta.stepNames.join(" → ")}).`);
+            renderStepProgress(0, meta.stepNames);
+        } else if (targetSign === "J" || targetSign === "Z") {
+            renderStepProgress(0, null);
             dynamicEvalModeLabel = `✨ Penjejak ${targetSign}`;
             setDynamicBannerRich("Isyarat Dinamik: Lukis bentuk ", targetSign, " di udara mengikut panduan lalu berhenti sekejap.");
         } else if (hasDtw) {
+            renderStepProgress(0, null);
             dynamicEvalModeLabel = "🎬 Mod DTW Aktif";
             setDynamicBannerRich("Isyarat Dinamik (DTW Aktif): Tiru gerakan tangan ", signWord, " mengikut video panduan lalu berhenti sekejap.");
         } else if (effRule.hasConstraint) {
+            renderStepProgress(0, null);
             dynamicEvalModeLabel = "😊 Mod Peraturan Wajah";
             setDynamicBannerRich("Isyarat Dinamik (Zon/Ekspresi Wajah): Lakukan gerakan ", signWord, " dengan AI Wajah aktif lalu berhenti sekejap.");
         } else {
+            renderStepProgress(0, null);
             dynamicEvalModeLabel = "🪞 Mod Cermin (Klip AI belum dirakam)";
             setDynamicBannerRich("Mod Cermin (Klip AI belum dirakam): Isyarat ", signWord, " belum mempunyai templat DTW. Teruskan berlatih ikut video panduan atau klik butang selesai di bawah.");
         }
@@ -415,7 +454,9 @@
             dynamicModePill.textContent = dynamicEvalModeLabel;
         }
         if (badge && !webcamRunning) {
-            badge.innerText = hasDtw ? "Model AI Gerakan (DTW Aktif) 🎬" : dynamicEvalModeLabel;
+            badge.innerText = hasSteps
+                ? dynamicEvalModeLabel
+                : (hasDtw ? "Model AI Gerakan (DTW Aktif) 🎬" : dynamicEvalModeLabel);
         }
     }
 
@@ -439,7 +480,12 @@
                 if (data.sequences) {
                     dynamicEngine.setTemplates(data.sequences);
                 }
-                mlReady = knn.labels.includes(targetSign) || dynamicEngine.templateLabels.map(l => String(l).trim().toUpperCase()).includes(targetSign);
+                if (data.steps) {
+                    stepClassifier.load(data.steps);
+                }
+                mlReady = knn.labels.includes(targetSign)
+                    || dynamicEngine.templateLabels.map(l => String(l).trim().toUpperCase()).includes(targetSign)
+                    || stepClassifier.hasTemplates(targetSign);
                 if (!isStaticSign) {
                     refreshDynamicModeIndicators();
                 } else if (mlReady && badge && !webcamRunning) {
@@ -962,6 +1008,42 @@
                     )
                     : null;
 
+                // Auto-activate Step-by-Step mode when this dynamic sign has recorded `steps`
+                if (stepClassifier.hasTemplates(targetSign)) {
+                    const stepRes = stepClassifier.update(frameVec146, {
+                        targetLabel: targetSign,
+                        mode: "target-locked",
+                        nowMs,
+                    });
+                    renderStepProgress(stepRes.currentStep, stepRes.stepNames);
+
+                    if (stepRes.completed) {
+                        const pctVal = Math.max(60, Math.min(100, Math.round(stepRes.confidence || 85)));
+                        lastDynFeedbackUntil = nowMs + 2400;
+                        if (dynamicModePill) dynamicModePill.innerText = `✅ Lengkap! (${pctVal}%)`;
+                        if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay feedback-success";
+                        if (feedbackText) feedbackText.innerText = `Hebat! Semua ${stepRes.totalSteps} langkah "${signWord}" tepat! ⭐`;
+                        if (confidencePct) confidencePct.innerText = pctVal + "%";
+                        if (confidenceBar) confidenceBar.style.width = pctVal + "%";
+                        onGestureSuccess(pctVal);
+                    } else if (nowMs >= lastDynFeedbackUntil) {
+                        const nextName = stepRes.stepNames[stepRes.currentStep] || `Langkah ${stepRes.currentStep + 1}`;
+                        const progPct = stepRes.totalSteps > 0
+                            ? Math.round(((stepRes.currentStep + (stepRes.confidence / 100) * 0.6) / stepRes.totalSteps) * 100)
+                            : 0;
+                        if (dynamicModePill) dynamicModePill.innerText = `🔢 Langkah ${stepRes.currentStep + 1}/${stepRes.totalSteps}`;
+                        if (feedbackOverlay) feedbackOverlay.className = stepRes.status === "step_advanced" ? "feedback-overlay feedback-success" : "feedback-overlay";
+                        if (feedbackText) {
+                            feedbackText.innerText = stepRes.status === "step_advanced"
+                                ? `Bagus! Sekarang buat "${nextName}"...`
+                                : (stepRes.status === "timeout_reset"
+                                    ? `Masa tamat — cuba semula dari "${stepRes.stepNames[0] || "Langkah 1"}"`
+                                    : (landmarks ? `Buat "${nextName}" (${stepRes.currentStep + 1}/${stepRes.totalSteps})...` : "Arahkan tangan & bahu anda ke dalam kotak kamera..."));
+                        }
+                        if (confidencePct) confidencePct.innerText = Math.min(99, progPct) + "%";
+                        if (confidenceBar) confidenceBar.style.width = Math.min(99, progPct) + "%";
+                    }
+                } else {
                 const segRes = segmenter.pushFrame({
                     frameVec: frameVec146,
                     handsLm,
@@ -1026,6 +1108,7 @@
                         if (confidencePct) confidencePct.innerText = "0%";
                         if (confidenceBar) confidenceBar.style.width = "0%";
                     }
+                }
                 }
             } else if (landmarks) {
                 const featVec = buildFeatureVector(landmarks, enableFaceAi ? latestFaceContext : null);
@@ -1353,7 +1436,7 @@
 </script>
 
 <script>
-    // Text-to-Speech (Uses ElevenLabs Kiko voice with browser Web Speech fallback)
+    // Text-to-Speech (Uses Google AI Studio Kiko voice with browser Web Speech fallback)
     function speakWord(text) {
         if (window.Kiko && typeof window.Kiko.speak === 'function') {
             window.Kiko.speak(text);

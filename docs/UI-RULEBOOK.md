@@ -1,156 +1,162 @@
-# Sign Cilik — Buku Panduan & Peraturan UI (`UI Rulebook`)
+# Sign Cilik — Buku Panduan & Peraturan UI (`UI Rulebook v2 — Pixel GBA`)
 
-Dokumen ini ialah rujukan rasmi (*single source of truth*) untuk reka bentuk antara muka pengguna (**UI**), sistem token CSS, kebolehcapaian (**WCAG AA**), dan peraturan pengkodan Blade bagi aplikasi **Sign Cilik** (`gesturespeak-v2`).
+Dokumen ini ialah rujukan rasmi (*single source of truth*) untuk reka bentuk antara muka pengguna (**UI**), sistem aset **Pixel Art (GBA/SNES)**, token CSS, kebolehcapaian (**WCAG AA**), interaksi, dan peraturan pengkodan Blade bagi aplikasi **Sign Cilik** (`gesturespeak-v2`).
+
+Rujukan visual induk disimpan di **FigCraft** (`F:\figcraft\sign cilik.figcraft` — artboard **`Sign Cilik (Pixel v2)`**) dan fail vektor induk disimpan di **VectorCraft** (`public/media/brand/` & `public/media/icons/`).
 
 Setiap perubahan atau pembinaan paparan baharu (`home`, `auth/*`, `learn/*`, `quiz/*`, `guardian/*`, `admin/*`) wajib mematuhi garis panduan di bawah.
 
 ---
 
-## 1. Identiti Jenama & Mod Paparan
+## 1. Identiti Jenama, Arah Visual & Mod Paparan
 
 - **Nama produk rasmi:** Gunakan **Sign Cilik** (`SignCilik`) pada semua `<title>`, kepala halaman, footer, dan salinan UI. Jangan gunakan nama legasi *GestureSpeak* pada antara muka pengguna.
+- **Wording Logo Kekal:** Teks logo dua warna pixel asal **SignCilik** (`Sign` `#16324f` + `Cilik` `#26b0e5` daripada [signcilik-logo.svg](file:///f:/gesture%20speak/gesturespeak-v2/public/media/brand/signcilik-logo.svg)) kekal digunakan tanpa diubah suai, dipadankan dengan ikon baharu **Kiko Cartridge Tile** ([signcilik-icon.svg](file:///f:/gesture%20speak/gesturespeak-v2/public/media/brand/signcilik-icon.svg)).
+- **Arah Visual (`Pixel v2`):**
+  - **Watak:** Ceria, taktil, tenang dibaca.
+  - **Dunia visual:** Kartrid permainan tangan retro (GBA/SNES) di atas kanvas krim hangat (`#fffdf7`).
+  - **Fokus (*Moments*):** Panel Hero Kiko Holo-Pod & 1 kad tugasan aktif sahaja yang menonjol; elemen krom lain kekal senyap (*Quiet Chrome*).
+  - **Tanda khas (*Signature*):** Sempadan pixel navy `3px` + bayang tekan taktil khusus untuk elemen aktif dan CTA utama.
 - **Tiga mod antara muka mengikut pengguna:**
   1. **Mod Awam & Pintu Masuk (`home`, `auth/*`):** Kanvas terang dan tenang, susun atur lapang tanpa lambakan lencana bertindan, dengan **Konsol Kamera AI** atau **Kad Pelajar** sebagai fokus visual tunggal.
-  2. **Mod Pembelajaran Kanak-Kanak (`learn/*`, `quiz/*`):** Ceria, mesra sentuhan (`>= 54px` untuk butang utama kanak-kanak), paparan angka ganjaran jelas, dan maskot bimbingan **Kiko** dibenarkan aktif.
+  2. **Mod Pembelajaran Kanak-Kanak (`learn/*`, `quiz/*`):** Ceria, mesra sentuhan (`>= 54px` untuk butang utama kanak-kanak), paparan angka ganjaran jelas, dan maskot bimbingan **Kiko Pixel** dibenarkan aktif.
   3. **Mod Portal Dewasa (`guardian/*`, `admin/*`):** Padat data, berfokus tugasan, hierarki kad sekata, tanpa dekorasi kartun berlebihan atau pop-up Kiko.
-- **Peraturan Maskot Kiko (`partials/kiko-mascot.blade.php`):**
-  - Kiko v2 ialah **robot kucing Holo-Pod menghadap kiri** (kepala *squircle* `#ffffff`, visor & garis `#16324f`, badan/telinga `#58caf3`, antena bintang & isyarat `#ffe942`, cahaya hologram `#d8f4fe`, pipi `#ff8fa3`) — memegang peranti Holo-Pod yang memancarkan kad isyarat tangan ke arah kiri supaya sesuai di sudut kanan bawah skrin. Jangan kembalikan kucing oren lama atau warna ungu.
-  - Reaksi muka & kad hologram berubah dinamik melalui `data-mood` (`happy`: ILY 🤟, `celebrate`: Thumbs-Up 👍, `encourage`: hati, `coach`: imbas tapak tangan ✋) + kelas `is-speaking` (mulut bercakap & gelombang suara) dan `is-poked` (terkejut `!`). Kekalkan API `window.Kiko`.
-  - Hanya dimuatkan pada laluan `learn.*` dan `quiz.*` melalui [layouts/app.blade.php](file:///f:/gesture%20speak/gesturespeak-v2/resources/views/layouts/app.blade.php).
-  - **Dilarang** dipaparkan pada halaman utama (`/`), log masuk (`/student/login`, `/login`), pendaftaran (`/register`), atau portal dewasa.
+- **Peraturan Maskot Kiko Pixel (`partials/kiko-mascot.blade.php`):**
+  - Maskot rasmi ialah **Kiko Pixel Art (48×44 GBA/SNES)** — robot kucing Holo-Pod menghadap kiri (kepala *squircle* `#ffffff`, visor & garis `#16324f`, badan/telinga `#58caf3`, antena bintang & bola ekor `#ffe942`, pancaran *dither* hologram `#d8f4fe`, pipi `#ff8fa3`).
+  - Fail induk VectorCraft: [kiko-mascot-pixel.vectorcraft](file:///f:/gesture%20speak/gesturespeak-v2/public/media/brand/kiko-mascot-pixel.vectorcraft) (1 artboard, 6 reaksi berasingan).
+  - 6 fail SVG sedia web (`public/media/brand/mascot/`): `kiko-pixel-happy.svg` (ILY 🤟), `kiko-pixel-celebrate.svg` (bintang emas), `kiko-pixel-encourage.svg` (hati merah jambu), `kiko-pixel-coach.svg` (tangan terbuka ✋ + garis imbas AI), `kiko-pixel-poke.svg` (terkejut `!`), `kiko-pixel-speaking.svg` (pembesar suara & gelombang).
+  - Kekalkan API JS `window.Kiko` dan hanya muatkan pada laluan `learn.*` dan `quiz.*` melalui [layouts/app.blade.php](file:///f:/gesture%20speak/gesturespeak-v2/resources/views/layouts/app.blade.php). **Dilarang** pada `/`, `/student/login`, `/login`, `/register`, atau portal dewasa.
 
 ---
 
-## 2. Sistem Warna & Kontras (`Color & Contrast Tokens`)
+## 2. Sistem Warna, Kontras (`WCAG AA`) & *Quiet Chrome*
 
 Semua warna teras ditakrifkan di `:root` dalam [public/css/app.css](file:///f:/gesture%20speak/gesturespeak-v2/public/css/app.css). Jangan tulis kod warna mentah berulang secara *inline* apabila token sudah wujud.
 
-| Token CSS | Nilai | Peranan Utama | Syarat Penggunaan |
+| Token CSS | Nilai | Peranan Utama | Syarat Penggunaan & Kontras |
 | :--- | :--- | :--- | :--- |
-| `--primary` | `#16324f` | Teks utama, butang utama, permukaan kad pelajar/CTA | Kontras tinggi di atas putih & `--bg-gradient` |
-| `--primary-dark` | `#0f2238` | Pentas kamera AI, `.site-footer`, teks atas aksen terang | Untuk latar gelap berfasa telemetri |
-| `--secondary` | `#26b0e5` | Aksen interaktif, garis aktif, identiti pelajar | Gunakan untuk sempadan aktif/fokus, bukan pembahagi neon |
-| `--secondary-light` | `#58caf3` | Sudut pemidang tilik piksel & garisan sendi tangan | Untuk kontras di atas `--primary-dark` |
-| `--secondary-dark` | `#0284c7` | Pautan teks, *kicker*, sorotan tajuk | Memenuhi WCAG AA di atas latar putih/krim |
-| `--accent` | `#ffe942` | Butang CTA kuning (`.btn-accent`, `.btn-cta-yellow`), bintang | Mesti dipadankan dengan teks `--primary` / `--primary-dark` |
-| `--pixel-green` / `--success` | `#22c55e` / `#059669` | Status padanan tepat, kemajuan selesai | Gunakan bersama `--success-dark` (`#065f46`) untuk teks di atas tint cerah |
-| `--danger` | `#d63031` | Mesej ralat pengesahan & amaran tindakan | Jangan bergantung pada warna semata-mata; sertakan teks jelas |
-| `--bg-gradient` | `#fffdf7` | Latar kanvas utama aplikasi | Disertai corak titik halus `rgba(22, 50, 79, 0.055)` |
-| `--bg-card` | `rgba(255, 255, 255, 0.98)` | Permukaan kad kandungan & borang | Kekal senyap; biar kandungan menjadi fokus |
-| `--text-muted` | `#475569` | Subtajuk, kapsyen, petunjuk input | Memastikan kontras >= 4.5:1 di atas putih |
-| `--border-light` | `rgba(22, 50, 79, 0.14)` | Garisan kad dan pembahagi halus | Utamakan garisan halus `1px` (`0.08`–`0.12` alpha) untuk kad moden |
+| `--primary` | `#16324f` | Teks utama, butang utama, panel Hero HUD, garis pixel | Kontras tinggi (> 12:1) di atas putih & `#fffdf7` |
+| `--primary-dark` | `#0e2238` | Pentas kamera AI, `.site-footer`, bayang visor/border | Untuk latar gelap berfasa telemetri |
+| `--secondary-text` | `#166891` | **WAJIB** untuk teks kecil biru, peratus aktif, label meta, & CTA biru | **Lulus WCAG AA (≥ 5.9:1)** di atas putih/krim & dengan teks putih |
+| `--secondary` | `#26b0e5` | Perkataan *Cilik* pada logo & aksen grafik | **Jangan** guna untuk teks kecil `< 18px` di atas putih (~3.2:1) |
+| `--secondary-light` | `#58caf3` | Bar kemajuan aktif, sudut pemidang tilik, aksen atas latar gelap | Kontras tinggi (6.9:1) di atas `--primary` / `--primary-dark` |
+| `--accent` | `#ffe942` | Butang CTA kuning, lencana XP bintang, sorotan tugasan | Mesti dipadankan dengan teks `--primary` (`#16324f`) |
+| `--pixel-green` | `#28c76f` | Bar kemajuan selesai `100%` & status padanan tepat | Untuk grafik/bar; bukan teks kecil di atas putih |
+| `--success-text` | `#047857` | **WAJIB** untuk teks status selesai (`100%`, `Selesai 100%`) | **Lulus WCAG AA (≥ 5.4:1)** di atas putih/tint hijau |
+| `--danger` | `#d63031` | Mesej ralat pengesahan & amaran tindakan | Sertakan teks/ikon jelas; jangan bergantung pada warna sahaja |
+| `--bg-gradient` | `#fffdf7` | Latar kanvas utama aplikasi (krim hangat) | Boleh disertai corak titik halus `rgba(22, 50, 79, 0.055)` |
+| `--bg-card` | `#ffffff` | Permukaan kad kandungan & borang | Kekal senyap supaya ikon pixel & teks menonjol |
+| `--text-muted` | `#475569` / `#5b7590` | Subtajuk, kapsyen, petunjuk input | Pastikan kontras ≥ 4.5:1 di atas putih |
+| `--border-quiet` | `#cbd9e8` | Sempadan `2px` untuk kad tidak aktif, trek bar, & lencana pasif | Mengurangkan kebisingan visual (*Quiet Chrome*) |
 
-### Larangan Warna (*Anti-Slop*)
-- **Dilarang** menggunakan ungu generik (`#6c5ce7`, `#8b5cf6`), kecerunan neon pelangi pada teks, atau cahaya *glow* hiasan pada kad baru (termasuk menyelaraskan semula `$accent` ungu pada portal ibu bapa apabila mengemaskini portal tersebut).
-- **Dilarang** memakai pembahagi neon tebal (`border-top: 3px solid var(--secondary)`) pada footer atau kad statik.
-- **Dilarang** memakai berbilang warna berbeza pada keempat-empat sudut bingkai kamera — gunakan **satu** warna seragam `--secondary-light` (`#58caf3`).
-
----
-
-## 3. Tipografi & Peraturan Fon `CutePixel`
-
-Sign Cilik menggabungkan tiga keluarga fon daripada [layouts/app.blade.php](file:///f:/gesture%20speak/gesturespeak-v2/resources/views/layouts/app.blade.php) dan [public/css/app.css](file:///f:/gesture%20speak/gesturespeak-v2/public/css/app.css):
-
-| Fon | Token CSS | Berat Dibenarkan | Kegunaan Sah |
-| :--- | :--- | :--- | :--- |
-| **Fredoka** | `--font-display` | `500`, `600` (elak `700`–`900` kecuali legasi belum dikemas kini) | Tajuk `<h1>`–`<h4>`, jenama teks, nama modul |
-| **Nunito** | `--font-main` | `400`, `600`, `700` (elak `800`–`900` baru) | Teks perenggan, label input, navigasi, butang, senarai |
-| **CutePixel** | `--font-pixel` | `500` (`size-adjust: 140%`, `letter-spacing: 0.04em`, `tabular-nums`) | **KHUSUS** untuk telemetri pendek & kod |
-
-### Peraturan Wajib Fon Piksel (`CutePixel.ttf`)
-1. **Di mana `CutePixel` MESTI digunakan:**
-   - Telemetri kamera & kuiz: contoh `AI BIM | 30 FPS`, `Padanan tepat | 96%`, `.pixel-hud`, `.pixel-stat-num`.
-   - Kod pelajar & token data: contoh `ADAM-1234`, `DEMO-1234`, `.pixel-code`, slot digit `.pin-box`.
-   - Bilangan ringkas pada kad modul: contoh `27 isyarat`.
-2. **Di mana `CutePixel` DILARANG digunakan:**
-   - Perenggan penerangan, arahan borang panjang, butang navigasi umum, atau tajuk halaman utama `<h1>` (untuk menjaga kebolehbacaan kanak-kanak dan pengguna skrin kecil).
-3. **Skala Saiz Responsif:**
-   - Gunakan `clamp(min, fluid, max)` dengan syarat **`max <= 2.5 * min`** (WCAG 1.4.4 supaya zum pelayar 200% tidak terhalang).
-   - Hadkan panjang baris perenggan utama kepada `50ch`–`62ch` (`max-width: 52ch`).
+### Peraturan Warna Bar Kemajuan & Anti-Slop
+- **2 warna semantik bar kemajuan sahaja:** Gunakan biru `#58caf3` untuk semua modul sedang belajar dan hijau `#28c76f` khusus untuk modul selesai `100%`. Elakkan bar pelangi (4–5 warna berbeza pada satu grid kad).
+- **Hierarki *Quiet Chrome*:** Hanya **Hero HUD** dan **1 kad tugasan aktif** (cth. *Tugasan Cikgu*) menerima sempadan tebal `3px` (`#166891`/`#16324f`) + *offset shadow*. Kad modul lain dan kad aksi bawah menggunakan sempadan senyap `2px solid #cbd9e8` tanpa bayang berat (hanya timbul halus ketika `:hover`/`:focus-visible`).
+- **Larangan Warna (*Anti-Slop*):** Dilarang menggunakan ungu generik (`#6c5ce7`, `#8b5cf6`), kecerunan neon pelangi pada teks, cahaya *glow* hiasan, atau warna berbeza pada keempat-empat sudut bingkai kamera.
+- **Sokongan Forced Colors Mode:** Jangan bergantung pada `box-shadow` semata-mata untuk sempadan kad atau fokus kerana pelayar membuang `box-shadow` dalam Windows High Contrast Mode — kekalkan `border` sebenar dan `outline` untuk `:focus-visible`.
 
 ---
 
-## 4. Jarak, Grid, Kedalaman & Jejari Tersarang
+## 3. Tipografi (`CutePixel` + `Nunito`) & Salinan Tenang
 
-- **Skala Jarak `4px`:** Semua `padding`, `margin`, dan `gap` mesti berada dalam gandaan `4px` (`0.25rem`, `0.5rem`, `0.75rem`, `1rem`, `1.25rem`, `1.5rem`, `2rem`, `3rem` / token `--space-1` hingga `--space-8`).
-- **Sifat Logik CSS:** Utamakan sifat logik (`margin-inline`, `padding-inline-start`, `min-block-size`, `min-inline-size`) untuk jarak aliran teks dan kawalan.
-- **Jejari Sudut Tersarang (*Concentric Radii: `inner = outer - padding`*):**
-  - Bekas luar / kad utama: `20px` (`.card`, `.auth-card`, `.hero-console`, `.cta-banner`)
-  - Sub-kad / dunia belajar / pemidang tilik: `16px` / `12px` (`.world-card`, `.console-screen`, `.step-mini-card`, `.demo-box`, `.form-input`, `.role-switcher`)
-  - Kawalan dalaman & slot: `8px`–`10px` (`.role-tab`, `.pin-box`, `.console-pill`, `.btn-sm`, `.password-toggle-btn`, `.pin-toggle-btn`)
-  - Lencana kod kecil: `6px` (`.pixel-code`)
-- **Permukaan & Bayang Senyap:**
-  - Gunakan sempadan halus `1px solid rgba(22, 50, 79, 0.1)` dan `--shadow-sm` / `--shadow-md` (`0 1px 2px ...`, `0 8px 24px ...`).
-  - **Elakkan** bayang komik keras (`4px 4px 0`, `6px 6px 0`), sempadan `2px dashed`, atau bingkai tebal berganda pada kad maklumat dan navigasi.
-- **Keseimbangan Grid:**
-  - Elakkan baris terakhir tergantung tidak seimbang (cth. `5 + 2` untuk 7 kategori). Gunakan `display: flex; flex-wrap: wrap; justify-content: center` untuk menghasilkan baris simetri (cth. `4 + 3` di desktop, 2 lajur pada skrin sempit `<= 560px`).
+Sign Cilik Pixel v2 menggabungkan **dua keluarga fon utama** (dengan `Fredoka` sebagai sokongan legasi jika perlu):
+
+| Fon | Token CSS | Kegunaan Sah (Pixel v2) |
+| :--- | :--- | :--- |
+| **CutePixel** | `--font-pixel` | Tajuk paparan (`<h1>`, `<h2>`, tajuk kad modul & kad aksi pantas), angka ganjaran & peratus (`120 XP`, `76%`, `71%`), kod murid (`ADAM-1234`), slot PIN, & telemetri kamera (`30 FPS`) |
+| **Nunito** | `--font-main` | Semua perenggan penerangan, subtajuk kad, label navigasi, teks butang, lencana status, & arahan borang (`400`, `600`, `700`; elak `900`) |
+
+### Peraturan Tipografi & Salinan (*Copy*)
+1. **Had `CutePixel`:** Jangan gunakan `CutePixel` untuk perenggan panjang atau arahan borang demi kebolehbacaan kanak-kanak dan pengguna skrin kecil. Sentiasa gunakan `font-variant-numeric: tabular-nums` pada angka XP/peratus.
+2. **Skala Responsif:** Gunakan `clamp(min, fluid, max)` dengan syarat **`max <= 2.5 * min`** (WCAG 1.4.4 supaya zum 200% tidak terhalang) dan hadkan lebar perenggan kepada `50ch`–`62ch`.
+3. **Sentence Case & Salinan Tenang (*Unslop*):**
+   - Guna *sentence case* pada semua *eyebrow*, meta, dan lencana (`Misi minggu ini`, `Penguasaan BIM keseluruhan`, `Kiko · Rakan BIM`, `6 modul aktif · 63 isyarat`, `Tugasan cikgu`, `Hampir siap`) — **elakkan** `ALL CAPS` berjarak lebar (*wide-tracked uppercase*).
+   - **Elakkan** tanda seru (`!`) pada tajuk/kapsyen UI dan **elakkan** noktah hujung pada label pendek/butang.
+   - Guna anak panah Unicode sebenar **`→`** (bukan `->`) dan label butang ringkas (`Sambung modul →`, `Ulang kaji →`, `Mula modul →`).
 
 ---
 
-## 5. Aset Jenama, Ikon SVG & Peraturan Emoji
+## 4. Jarak, Grid, Jejari Pixel & Struktur Kad Responsif
 
-### Aset Jenama Rasmi (`public/media/brand/`)
-- `signcilik-logo.svg` — Logo latar cerah (navbar & halaman cerah).
-- `signcilik-logo-dark.svg` — Logo latar gelap (footer & mod gelap).
-- `signcilik-icon.svg` — Maskot bulatan/kotak piksel biru (ikon aplikasi & `<x-sc-icon name="mascot" />`).
+- **Skala Jarak `4px`:** Semua `padding`, `margin`, dan `gap` mesti gandaan `4px` (`4, 8, 12, 16, 20, 24, 32, 48px`). Utamakan sifat logik CSS (`margin-inline`, `padding-inline`, `min-block-size`, `min-inline-size`).
+- **Jejari Sudut Pixel v2 (*Nested Radii*):**
+  - Panel Hero & kad modul / kad aksi bawah: `10px`
+  - Jubin ikon pixel dalam kad: `8px` (`10px - padding` atau `6px`–`8px` supaya kekal bersegi retro)
+  - Butang CTA, tab navigasi, & pil status HUD: `6px`
+  - Lencana status kecil & trek bar kemajuan: `4px` (isi bar: `2px`)
+- **Struktur Kad Moden (`modern-web-guidance: card`):**
+  - Gunakan `<article>` sebagai akar setiap kad modul.
+  - Jadikan setiap kad sebagai bekas saiz (`container-type: inline-size`) dan guna `@container` supaya susun atur menyesuaikan lebar kad (3 lajur desktop → 2 tablet → 1 telefon).
+  - Gunakan `display: grid; grid-template-rows: subgrid` apabila kad dalam satu baris perlu menyelaraskan tajuk, bar kemajuan, dan butang CTA.
+  - Untuk kad boleh klik penuh, guna corak *stretched link* (`a.card-link::after { content: ""; position: absolute; inset: 0; }`) pada pautan tajuk kad dan elakkan menyarangkan `<button>` di dalam `<a>`.
 
-### Komponen Ikon `<x-sc-icon>` & `<x-sc-category-icon>`
-Sentiasa guna komponen Blade [sc-icon.blade.php](file:///f:/gesture%20speak/gesturespeak-v2/resources/views/components/sc-icon.blade.php) dan [sc-category-icon.blade.php](file:///f:/gesture%20speak/gesturespeak-v2/resources/views/components/sc-category-icon.blade.php):
+---
 
-- **Senarai 16 ikon SVG rasmi (+ `mascot`):**
-  `abjad-nombor`, `bintang-kuiz`, `buku`, `guru`, `haiwan`, `ibu-bapa`, `kamera-ai`, `keluarga`, `keluarga-guru`, `kod-pin`, `pelajar`, `pelajar-cemerlang`, `robot-ai`, `suara-bm`, `trofi`, `ucapan`.
-- **Ikon hiasan mesti kekal `alt=""` (lalai pada `<x-sc-icon>`)** supaya `aria-hidden="true"` ditambah secara automatik; nyatakan `alt="..."` hanya jika ikon berdiri sendiri tanpa teks yang menjelaskan maknanya.
-- **Larangan Emoji UI:** Dilarang menambah emoji (`🏫`, `📊`, `🏆`, `⚠️`, `👩‍🏫`, `🐾`, `⭐`) ke dalam tajuk kad, label metrik, butang, atau lencana. Gantikan secara berperingkat dengan `<x-sc-icon>` pada halaman legasi (`learn/*`, `quiz/*`, `guardian/*`, `admin/*`).
-- **Kawalan Ketumpatan Ikon:**
-  - Jangan letak ikon pada setiap pautan teks navigasi utama.
-  - Jangan letak kotak kapsul `.section-pill` berulang-ulang di atas setiap tajuk `<h2>` atau setiap kad peranan — guna `.section-eyebrow` atau `.role-kicker-row` yang ringkas.
+## 5. Aset Jenama, Pek 19 Ikon Pixel & Fail Master
+
+Semua aset pixel SVG wajib menyertakan `shape-rendering="crispEdges"` dan dipaparkan di CSS dengan `image-rendering: pixelated` supaya bucu piksel kekal tajam.
+
+### Aset Jenama & Web/PWA (`public/media/brand/` & `public/`)
+- [signcilik-icon.svg](file:///f:/gesture%20speak/gesturespeak-v2/public/media/brand/signcilik-icon.svg) & [logo-square.svg](file:///f:/gesture%20speak/gesturespeak-v2/public/media/brand/logo-square.svg) — Ikon aplikasi **Kiko Cartridge Tile (32×32 Pixel Art)**; fail induk: [signcilik-icon-pixel.vectorcraft](file:///f:/gesture%20speak/gesturespeak-v2/public/media/brand/signcilik-icon-pixel.vectorcraft).
+- Set ikon web/PWA lengkap di `public/`: `favicon.ico` (16/32/48px), `favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png` (180px), `icon-192.png`, `icon-512.png`, dan `site.webmanifest`.
+- [signcilik-logo.svg](file:///f:/gesture%20speak/gesturespeak-v2/public/media/brand/signcilik-logo.svg) & [signcilik-logo-dark.svg](file:///f:/gesture%20speak/gesturespeak-v2/public/media/brand/signcilik-logo-dark.svg) — Logo penuh (kekalkan teks pixel asal **SignCilik**).
+
+### Komponen Ikon `<x-sc-icon>` & `<x-sc-category-icon>` (19 Ikon Pixel Rasmi)
+Fail induk VectorCraft (1 artboard 19 ikon): [signcilik-icon-pack-pixel.vectorcraft](file:///f:/gesture%20speak/gesturespeak-v2/public/media/icons/signcilik-icon-pack-pixel.vectorcraft).
+
+- **Senarai 19 ikon SVG pixel rasmi (grid 24×24, `192×192`, + `mascot`):**
+  `abjad-nombor`, `bintang-kuiz`, `buku`, `guru`, `haiwan`, `ibu-bapa`, `kamera-ai`, `keluarga`, `keluarga-guru`, `kod-pin`, `nombor`, `pelajar`, `pelajar-cemerlang`, `perasaan`, `robot-ai`, `soalan`, `suara-bm`, `trofi`, `ucapan`.
+- **Ikon tanpa muka:** `buku`, `kod-pin`, `keluarga`, `trofi`, dan `ucapan` kekal bersih tanpa muka (ikon `ucapan` memaparkan garis teks putih di dalam gelembung biru).
+- **Pemetaan kategori ([sc-category-icon.blade.php](file:///f:/gesture%20speak/gesturespeak-v2/resources/views/components/sc-category-icon.blade.php)):** `huruf/abjad` → `abjad-nombor`, `nombor` → `nombor`, `salam/ucapan` → `ucapan`, `keluarga` → `keluarga`, `haiwan` → `haiwan`, `perasaan` → `perasaan`, `soalan` → `soalan`, lain-lain → `buku`.
+- **Ikon hiasan & Larangan Emoji:** Ikon di sebelah label teks mesti `alt=""` (lalai pada `<x-sc-icon>`, menambah `aria-hidden="true"`). **Dilarang** meletakkan emoji UI (`🏫`, `📊`, `🏆`, `⭐`) dalam tajuk kad, butang, atau lencana — sentiasa guna `<x-sc-icon>`.
 
 ---
 
 ## 6. Struktur Halaman & Komponen Utama
 
 1. **Header & Footer (`layouts/app.blade.php`):**
-   - Header lekat penuh (`position: sticky; top: 0; width: 100%`) dengan latar separuh telus `rgba(252, 251, 247, 0.94)` dan `border-bottom: 1px solid rgba(22, 50, 79, 0.08)`.
+   - Header lekat penuh (`position: sticky; top: 0; width: 100%`) dengan latar `#ffffff` / `rgba(255, 255, 255, 0.96)` dan `border-bottom: 3px solid var(--primary)` (mod pixel murid) atau `1px solid rgba(22, 50, 79, 0.08)` (mod awam/dewasa).
    - Sediakan skip-link (`Langkau ke kandungan utama`) ke `<main id="main-content" class="page-container" tabindex="-1">`.
-   - Setiap `<nav>` mempunyai `aria-label` yang jelas dan berbeza tanpa mengulangi perkataan *"navigasi"* (cth. `aria-label="Utama"`, `aria-label="Dunia permainan"`, `aria-label="Pintu masuk"`).
+   - Setiap `<nav>` mempunyai `aria-label` unik tanpa perkataan *"navigasi"* (cth. `aria-label="Utama"`, `aria-label="Dunia permainan"`).
 2. **Hero & Seksyen Halaman Utama (`home.blade.php`):**
-   - Maksimum **1 butang utama + 1 butang sekunder** dalam `.hero-cta-row`, dan kedua-duanya **mesti menuju destinasi berbeza** (cth. `Mula belajar sekarang` -> `/student/login` dan `Lihat modul BIM` -> `#modul`).
-   - Dilarang menambah baris kad lencana ringkas terus di bawah butang hero jika seksyen ciri sudah wujud di bawahnya.
-   - Jangan gabung `display: flex` pada `<li>` yang mempunyai tag sebaris (`<strong>` atau `<code>`) tanpa pembalut teks supaya jarak perkataan kekal normal.
+   - Maksimum **1 butang utama + 1 butang sekunder** dalam `.hero-cta-row`, menuju destinasi berbeza.
+   - Jangan gabung `display: flex` pada `<li>` yang mempunyai tag sebaris (`<strong>` atau `<code>`) tanpa pembalut teks.
 3. **Halaman Log Masuk (`student-login.blade.php`, `login.blade.php`, `register.blade.php`):**
-   - Gunakan susun atur 2 lajur `.auth-split` (`minmax(0, 480px) minmax(0, 1fr)`).
-   - Butang togol kata laluan (`.password-toggle-btn` dengan `position: absolute`) hanya sah di dalam pembalut `.password-wrap` (`position: relative`). Untuk togol sebaris bersebelahan label seperti skrin PIN, gunakan `.pin-toggle-btn` (`position: static`).
-   - Letakkan teks bantuan input (`aria-describedby="pin-help"`) **di atas** kotak input supaya senarai *autocomplete* pelayar tidak menutupinya.
-   - Setiap input peribadi mesti menetapkan `autocomplete` yang tepat (`username`, `current-password`, `email`), `label for="id"` yang dipautkan secara eksplisit, dan `enterkeyhint` yang sesuai.
+   - Susun atur 2 lajur `.auth-split` (`minmax(0, 480px) minmax(0, 1fr)`).
+   - Letakkan teks bantuan (`aria-describedby`) **di atas** kotak input supaya *autocomplete* pelayar tidak menutupinya.
+   - Tetapkan `autocomplete`, `<label for="id">`, dan `enterkeyhint` pada setiap input.
 
 ---
 
-## 7. Gerakan, Responsif & Kebolehcapaian (`WCAG AA`)
+## 7. Interaksi (`emil-design-eng`), Responsif & Kebolehcapaian (`WCAG AA`)
 
-- **Gerakan:**
-  - Gunakan lengkung tungal `--ease-out: cubic-bezier(0.22, 1, 0.36, 1)` dengan tempoh `140ms`–`180ms`.
-  - Animasikan `transform` dan `opacity` sahaja; balut kesan `:hover` di dalam `@media (hover: hover) and (pointer: fine)` supaya skrin sentuh tidak mengalami *sticky hover*.
-  - Jangan buang peraturan `@media (prefers-reduced-motion: reduce)`.
+- **Interaksi & Gerakan Taktil:**
+  - Gunakan lengkung `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)` dengan tempoh pantas **`140ms`–`220ms`** (jangan melebihi `300ms` untuk elemen UI).
+  - **Jangan guna `transition: all`:** Nyatakan sifat khusus sahaja (`transition: transform 160ms var(--ease-out), background-color 160ms ease, border-color 160ms ease`).
+  - **Maklum balas tekan (`:active`):** Setiap butang pixel wajib memberi rasa ditekan: `transform: translateY(3px)` (dengan pengurangan *offset shadow*) atau `transform: scale(0.97)` dalam `160ms var(--ease-out)`.
+  - **Hover khusus tetikus:** Balut kesan `:hover` dalam `@media (hover: hover) and (pointer: fine)` supaya tablet/telefon tidak mengalami *sticky hover*.
+  - **Popover & Gelembung Kiko:** Tetapkan `transform-origin: bottom right` (berpaut pada Kiko) dan animasikan masuk dengan `@starting-style` dari `transform: scale(0.95); opacity: 0` — **jangan** mula dari `scale(0)`.
+  - **Kemunculan senarai kad:** Jika menganimasikan kad masuk, guna satu *fade + rise* `8px` (`220ms var(--ease-out)`) dengan *stagger* pendek `40ms` dan hormati `@media (prefers-reduced-motion: reduce)`.
 - **Responsif & Limpahan Skrin:**
-  - `body` menggunakan `min-height: 100dvh` (elak `100vh`) dan `overflow-x: clip`.
-  - Pastikan semua anak grid/flex mempunyai `min-width: 0`. Tiada elemen dibenarkan melebihi lebar paparan pada lebar ujian `390px` (telefon) dan `1440px` (desktop): `document.documentElement.scrollWidth === document.documentElement.clientWidth`.
+  - `body` menggunakan `min-height: 100dvh` dan `overflow-x: clip`; semua anak grid/flex menetapkan `min-width: 0`.
+  - Tiada limpahan mendatar pada lebar `390px` (telefon) dan `1440px` (desktop): `scrollWidth === clientWidth`.
 - **Kebolehcapaian Wajib:**
-  - `:focus-visible` mesti mempunyai `outline: 3px solid var(--primary); outline-offset: 3px;` (jangan matikan `outline` tanpa ganti, dan kekalkan `@media (forced-colors: active)`).
-  - Saiz sasaran klik/sentuh minimum `44px` di dalam `@media (pointer: coarse)`, `48px` (`--touch-min`) untuk butang umum, dan `54px` (`--touch-kid`) untuk CTA murid.
-  - Hierarki tajuk mengikut turutan `<h1>` -> `<h2>` -> `<h3>` tanpa melangkau aras; satu `<h1>` sahaja per halaman.
-  - Jangan letakkan `aria-label` pada `<div>` atau `<section>` hiasan kecuali benar-benar membentuk mercu tanda penting; guna `<aside>` untuk panel maklumat sampingan.
-  - Untuk modal baharu atau penambahbaikan modal sedia ada, utamakan `<dialog>` natif (`.showModal()`) berbanding `div` `display: flex` manual supaya pengurusan fokus dan `Escape` dikendalikan pelayar.
+  - `:focus-visible` mesti mempunyai `outline: 3px solid var(--primary); outline-offset: 3px;` dengan sokongan `@media (forced-colors: active)`.
+  - **Nama aksesibel unik untuk CTA berulang:** Jangan biarkan beberapa pautan/butang membaca `"Mula modul"` yang sama pada pembaca skrin — tambah teks tersembunyi visual (`Mula modul <span class="visually-hidden">Nombor 0–10</span>`).
+  - Sasaran sentuhan minimum `44×44px` (`@media (pointer: coarse)`), `48px` (`--touch-min`) untuk butang umum, dan `54px` (`--touch-kid`) untuk CTA murid.
+  - Satu `<h1>` sahaja per halaman dan turutan tajuk `<h1>` → `<h2>` → `<h3>` tanpa melangkau aras.
+  - Utamakan `<dialog>` natif (`.showModal()`) untuk sebarang modal baharu.
 
 ---
 
 ## 8. Senarai Semak Pra-Siap (*Pre-Ship Checklist*)
 
-Sebelum menamatkan sebarang kerja UI baharu atau penyelarasan halaman sedia ada (`learn/*`, `quiz/*`, `guardian/*`, `admin/*`):
+Sebelum menamatkan sebarang kerja UI baharu atau penyelarasan halaman (`learn/*`, `quiz/*`, `guardian/*`, `admin/*`):
 
-1. **Semak Token & Jenama:** Tiada nama *GestureSpeak*, tiada ungu generik `#6c5ce7`/`#8b5cf6`, tiada emoji UI gantian kepada `<x-sc-icon>`.
-2. **Semak Tipografi & Sudut:** Berat fon tajuk `600`, `CutePixel` hanya pada kod/telemetri pendek, jejari tersarang mematuhi skala (`20 -> 16/12 -> 8/10`).
-3. **Semak Responsif & Visual:** Ujian paparan pada lebar `1440px` dan `390px` menunjukkan `scrollWidth === clientWidth`, tiada butang terkeluar daripada bekasnya, dan tiada teks terpotong.
-4. **Semak Kebolehcapaian & Teks Entiti:** Label `<label for>` lengkap, `:focus-visible` jelas, dan patuhi jangkaan teks ujian Laravel (maklumkan atau selaraskan dengan teliti jika ujian sedia ada seperti [ExampleTest.php](file:///f:/gesture%20speak/gesturespeak-v2/tests/Feature/ExampleTest.php) memeriksa rentetan HTML khusus).
+1. **Jenama & Aset Pixel:** Tiada nama *GestureSpeak*, tiada ungu generik `#6c5ce7`/`#8b5cf6`, tiada emoji UI, semua ikon menggunakan 19 ikon rasmi `<x-sc-icon>` (`image-rendering: pixelated`), wording logo `SignCilik` asal kekal.
+2. **Kontras & Hierarki:** Semua teks kecil biru/hijau memakai `#166891` / `#047857` (≥ 4.5:1), hanya Hero & kad aktif menonjol (*Quiet Chrome*), bar kemajuan guna 2 warna semantik sahaja (`#58caf3` / `#28c76f`).
+3. **Tipografi & Salinan:** `CutePixel` untuk tajuk/angka HUD/kod, `Nunito` untuk teks huraian/butang, *sentence case* pada label meta, tiada `!` atau noktah hujung pada label pendek, anak panah guna `→`.
+4. **Interaksi & Aksesibiliti:** Tiada `transition: all`, ada `:active` pada butang, hover dalam `@media (hover: hover)`, nama aksesibel unik pada CTA berulang, `:focus-visible` jelas, dan `scrollWidth === clientWidth` pada `390px` & `1440px`.
 5. **Jalankan Verifikasi:**
    - `php artisan view:cache` & `php artisan view:clear`
    - `php artisan test`

@@ -1,687 +1,877 @@
-@extends('layouts.app', ['title' => 'Studio Latihan AI - MediaPipe'])
+@extends('layouts.admin', ['title' => 'Studio latihan AI — Sign Cilik'])
 
 @push('styles')
 <style>
-    /* Flexible Workspace Grid */
     .studio-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1.25rem;
+        align-items: center;
+        margin-bottom: 16px;
         flex-wrap: wrap;
-        gap: 1rem;
+        gap: 12px;
+    }
+    .studio-header h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        margin: 0;
     }
     .studio-header-actions {
         display: flex;
         align-items: center;
-        gap: 0.6rem;
+        gap: 8px;
         flex-wrap: wrap;
     }
+    .studio-topbar-meta {
+        font-family: var(--adm-mono);
+        font-size: 0.78rem;
+        font-variant-numeric: tabular-nums;
+        color: var(--adm-text-muted);
+    }
 
-    .studio-grid {
+    .studio-grid-v2 {
         display: grid;
-        grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.95fr);
-        gap: 1.5rem;
-        align-items: start;
-        transition: all 0.25s ease;
-    }
-    .studio-grid.layout-wide {
-        grid-template-columns: 1fr;
-    }
-    .studio-grid.layout-wide .studio-side-col {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 1.5rem;
+        grid-template-columns: minmax(0, 1.55fr) minmax(290px, 0.72fr);
+        gap: 20px;
         align-items: start;
     }
-    .studio-grid.layout-wide .studio-side-col > .card {
-        margin-bottom: 0 !important;
-    }
+    .studio-grid-v2.layout-wide { grid-template-columns: 1fr; }
+    .studio-main-col, .studio-side-col { min-width: 0; }
     @media (min-width: 980px) {
-        .studio-grid:not(.layout-wide) .studio-main-col {
+        .studio-grid-v2:not(.layout-wide) .studio-main-col {
             position: sticky;
-            top: 5.2rem;
+            top: 20px;
         }
     }
     @media (max-width: 980px) {
-        .studio-grid {
-            grid-template-columns: 1fr;
-        }
+        .studio-grid-v2 { grid-template-columns: 1fr; }
     }
 
-    /* Segmented Pill Controls */
+    .console-card { padding: 0; overflow: hidden; }
+    .console-tabs-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--adm-hairline);
+        flex-wrap: wrap;
+    }
+    .mode-tablist {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .mode-tab-btn {
+        position: relative;
+        flex: none;
+        border: none;
+        background: transparent;
+        padding: 12px 0;
+        font-family: var(--adm-sans);
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--adm-text-muted);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: color 140ms var(--adm-ease);
+    }
+    .mode-tab-btn[aria-selected="true"] { color: var(--adm-ink); }
+    .mode-tab-btn[aria-selected="true"]::after {
+        content: "";
+        position: absolute;
+        inset: auto 0 0;
+        border-block-end: 2px solid var(--adm-sky);
+    }
+    .console-body { padding: 16px 20px 20px; }
+    .console-target-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+    .console-target-title {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--adm-ink);
+        margin: 0;
+    }
+
+    /* Compact Instrument Controls */
     .seg-group {
         display: inline-flex;
-        background: #f1f5f9;
-        padding: 0.2rem;
-        border-radius: var(--radius-sm);
-        border: 1px solid rgba(108, 92, 231, 0.14);
-        gap: 0.15rem;
+        background: var(--adm-raised);
+        padding: 2px;
+        border-radius: 4px;
+        border: 1px solid var(--adm-hairline);
+        gap: 2px;
     }
     .seg-btn {
         border: none;
         background: transparent;
-        color: var(--text-muted);
-        font-family: var(--font-main);
+        color: var(--adm-text-muted);
+        font-family: var(--adm-sans);
         font-size: 0.78rem;
-        font-weight: 800;
-        padding: 0.32rem 0.65rem;
-        border-radius: 7px;
+        font-weight: 500;
+        padding: 4px 10px;
+        border-radius: 3px;
         cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        transition: all 0.15s ease;
         white-space: nowrap;
     }
-    .seg-btn:hover {
-        color: var(--primary);
-    }
     .seg-btn.active {
-        background: #fff;
-        color: var(--primary);
-        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
-    }
-
-    /* Camera Toolbar */
-    .camera-toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-        padding: 0.65rem 0.85rem;
-        background: #f8fafc;
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-md);
-        margin-bottom: 0.85rem;
-    }
-    .camera-toolbar-group {
-        display: flex;
-        align-items: center;
-        gap: 0.45rem;
-        flex-wrap: wrap;
+        background: var(--adm-surface);
+        color: var(--adm-ink);
+        box-shadow: 0 1px 0 rgba(22, 50, 79, 0.08);
     }
     .cam-tool-btn {
-        border: 1px solid rgba(108, 92, 231, 0.18);
-        background: #fff;
-        color: var(--text-dark);
-        font-family: var(--font-main);
-        font-size: 0.78rem;
-        font-weight: 800;
-        padding: 0.35rem 0.65rem;
-        border-radius: 8px;
+        border: 1px solid var(--adm-hairline-strong);
+        background: var(--adm-surface);
+        color: var(--adm-ink);
+        font-family: var(--adm-sans);
+        font-size: 0.8rem;
+        font-weight: 500;
+        height: 32px;
+        padding: 0 10px;
+        border-radius: 4px;
         cursor: pointer;
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        transition: all 0.15s ease;
+        gap: 6px;
+        box-shadow: 0 1px 0 rgba(22, 50, 79, 0.06);
+        transition: background-color 140ms var(--adm-ease), border-color 140ms var(--adm-ease);
     }
-    .cam-tool-btn:hover {
-        border-color: var(--primary);
-        color: var(--primary);
+    @media (hover: hover) and (pointer: fine) {
+        .cam-tool-btn:hover { background: var(--adm-raised); }
     }
     .cam-tool-btn.active {
-        background: #eeebff;
-        border-color: var(--primary);
-        color: var(--primary-dark);
+        background: var(--adm-ink);
+        border-color: var(--adm-ink);
+        color: #fff;
     }
     .cam-select-compact {
-        padding: 0.34rem 0.6rem;
+        padding: 0 10px;
+        height: 32px;
         font-size: 0.8rem;
-        font-weight: 700;
-        border-radius: 8px;
-        border: 1px solid rgba(108, 92, 231, 0.2);
-        background: #fff;
-        color: var(--text-dark);
-        font-family: var(--font-main);
+        font-weight: 500;
+        border-radius: 4px;
+        border: 1px solid var(--adm-hairline-strong);
+        background: var(--adm-surface);
+        color: var(--adm-ink);
+        font-family: var(--adm-sans);
         max-width: 210px;
     }
 
-    /* Flexible Camera Stage */
+    /* Camera Stage (Sign Cilik deep navy visor, clean 1px border, no neon blur) */
     .studio-stage {
         position: relative;
-        background: #0f172a;
-        border-radius: var(--radius-md);
+        background: var(--adm-rail);
+        border-radius: 6px;
         overflow: hidden;
         aspect-ratio: 4/3;
         width: 100%;
-        max-height: 72vh;
-        margin-bottom: 0.9rem;
-        border: 2px solid rgba(108, 92, 231, 0.15);
-        transition: aspect-ratio 0.2s ease;
+        max-height: 70dvh;
+        margin-bottom: 12px;
+        border: 1px solid rgba(88, 202, 243, 0.32);
     }
     .studio-stage.ratio-16-9 { aspect-ratio: 16/9; }
-    .studio-stage.ratio-1-1 { aspect-ratio: 1/1; max-width: 560px; margin-left: auto; margin-right: auto; }
-    .studio-stage.ratio-auto { aspect-ratio: auto; min-height: 360px; height: 52vh; }
+    .studio-stage.ratio-1-1 { aspect-ratio: 1/1; max-width: 540px; margin-inline: auto; }
+    .studio-stage.ratio-auto { aspect-ratio: auto; min-height: 360px; height: 52dvh; }
     .studio-stage:fullscreen {
-        max-height: none;
-        max-width: none;
-        width: 100vw;
-        height: 100vh;
-        border-radius: 0;
-        border: none;
+        max-height: none; max-width: none; width: 100vw; height: 100dvh; border-radius: 0; border: none;
     }
+    .studio-stage video, .studio-stage canvas {
+        position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);
+    }
+    .studio-stage.unmirrored video, .studio-stage.unmirrored canvas { transform: none; }
+    .studio-stage.fit-contain video, .studio-stage.fit-contain canvas { object-fit: contain; }
+    .studio-stage canvas { pointer-events: none; }
 
-    .studio-stage video,
-    .studio-stage canvas {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transform: scaleX(-1);
-        transition: transform 0.2s ease;
-    }
-    .studio-stage.unmirrored video,
-    .studio-stage.unmirrored canvas {
-        transform: none;
-    }
-    .studio-stage.fit-contain video,
-    .studio-stage.fit-contain canvas {
-        object-fit: contain;
-    }
-    .studio-stage canvas {
-        pointer-events: none;
-    }
-
-    /* HUD Overlays */
     .studio-hud {
-        position: absolute;
-        top: 0.75rem;
-        left: 0.75rem;
-        right: 0.75rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 0.5rem;
-        pointer-events: none;
-        z-index: 4;
+        position: absolute; top: 12px; left: 12px; right: 12px;
+        display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
+        pointer-events: none; z-index: 4;
     }
-    .hud-stack {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        flex-wrap: wrap;
-    }
+    .hud-stack { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .hud-pill {
-        padding: 0.32rem 0.75rem;
-        border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 800;
-        background: rgba(15, 23, 42, 0.76);
-        color: #fff;
-        backdrop-filter: blur(6px);
+        padding: 3px 8px;
+        border-radius: 3px;
+        font-family: var(--adm-mono);
+        font-size: 0.85rem;
+        font-variant-numeric: tabular-nums;
+        background: rgba(15, 34, 56, 0.88);
+        color: #e2e8f0;
+        border: 1px solid rgba(88, 202, 243, 0.28);
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
+        gap: 6px;
     }
-    .hud-pill.ok { background: rgba(22, 163, 74, 0.88); }
-    .hud-pill.warn { background: rgba(217, 119, 6, 0.88); }
-    .hud-pill.target { background: rgba(108, 92, 231, 0.9); }
+    .hud-pill.ok { color: #86efac; }
+    .hud-pill.warn { color: var(--adm-sun); }
 
-    /* Floating Live Test HUD on Video */
     .hud-live-test {
-        position: absolute;
-        bottom: 0.75rem;
-        left: 0.75rem;
-        right: 3.6rem;
-        background: rgba(15, 23, 42, 0.82);
-        backdrop-filter: blur(8px);
+        position: absolute; bottom: 12px; left: 12px; right: 52px;
+        background: rgba(15, 34, 56, 0.92);
         color: #fff;
-        padding: 0.6rem 1rem;
-        border-radius: var(--radius-md);
-        display: none;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
+        padding: 10px 14px;
+        border-radius: 4px;
+        display: none; align-items: center; justify-content: space-between; gap: 14px;
         z-index: 4;
-        border: 1px solid rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(88, 202, 243, 0.28);
     }
     .hud-live-label {
-        font-family: var(--font-display);
-        font-size: 1.5rem;
-        font-weight: 900;
-        color: #ffeaa7;
-        min-width: 64px;
+        font-family: var(--adm-mono);
+        font-size: 1.45rem;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        color: #fff;
+        min-width: 56px;
         text-align: center;
     }
 
-    /* Fullscreen Quick Action Bar inside Stage */
-    .stage-fs-controls {
-        position: absolute;
-        bottom: 0.85rem;
-        right: 0.85rem;
-        z-index: 5;
-        display: flex;
-        gap: 0.4rem;
-    }
+    .stage-fs-controls { position: absolute; bottom: 12px; right: 12px; z-index: 5; display: flex; gap: 6px; }
     .stage-icon-btn {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        background: rgba(15, 23, 42, 0.7);
-        color: #fff;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(6px);
-        transition: all 0.15s ease;
+        width: 32px; height: 32px; border-radius: 3px;
+        border: 1px solid rgba(88, 202, 243, 0.28);
+        background: rgba(15, 34, 56, 0.88); color: #e2e8f0;
+        cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     }
-    .stage-icon-btn:hover {
-        background: var(--primary);
-        border-color: var(--primary);
-    }
-
     .studio-countdown {
-        position: absolute;
-        inset: 0;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        font-size: 5.5rem;
-        font-weight: 900;
-        color: #ffeaa7;
-        text-shadow: 0 6px 30px rgba(0, 0, 0, 0.75);
-        font-family: var(--font-display);
-        background: rgba(15, 23, 42, 0.25);
-        z-index: 6;
-        pointer-events: none;
+        position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+        font-size: 5rem; font-weight: 500; color: var(--adm-sun);
+        font-family: var(--adm-mono);
+        background: rgba(15, 34, 56, 0.5);
+        z-index: 6; pointer-events: none;
     }
 
-    /* Target Sign Selector & Chips */
-    .target-selector-box {
-        background: #f8fafc;
-        padding: 0.9rem 1rem;
-        border-radius: var(--radius-md);
-        margin-bottom: 0.9rem;
-        border: 1px solid var(--border-light);
+    /* Step Timeline & Actions */
+    .steps-panel-v2 { display: none; margin-top: 12px; }
+    .steps-panel-head {
+        display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;
     }
-    .chip-scroll {
-        display: flex;
-        gap: 0.4rem;
-        overflow-x: auto;
-        padding-bottom: 0.35rem;
-        margin-top: 0.65rem;
-        scrollbar-width: thin;
+    .steps-meta-inputs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .steps-name-input {
+        padding: 0 10px; height: 32px;
+        border: 1px solid var(--adm-hairline-strong); border-radius: 4px;
+        font-family: var(--adm-sans); font-size: 0.8rem; color: var(--adm-ink);
+        background: var(--adm-surface); width: 200px; max-width: 100%;
     }
-    .sign-chip {
-        border: 1px solid rgba(108, 92, 231, 0.18);
-        background: #fff;
-        color: var(--text-dark);
-        padding: 0.25rem 0.65rem;
-        border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 800;
-        cursor: pointer;
-        white-space: nowrap;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        transition: all 0.15s ease;
+    .steps-countdown-toggle {
+        font-size: 0.8rem; color: var(--adm-text-muted);
+        display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
     }
-    .sign-chip:hover {
-        border-color: var(--primary);
-        color: var(--primary);
+    .steps-timeline {
+        display: flex; gap: 6px; flex-wrap: wrap; min-height: 40px; align-items: center;
+        padding: 6px 10px; background: var(--adm-canvas);
+        border: 1px solid var(--adm-hairline); border-radius: 4px;
     }
-    .sign-chip.active {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: #fff;
+    .step-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 10px; border-radius: 4px;
+        background: var(--adm-surface); color: var(--adm-ink);
+        border: 1px solid var(--adm-hairline-strong);
+        font-size: 0.8rem; font-weight: 500;
     }
-    .sign-chip .chip-count {
-        font-size: 0.7rem;
-        padding: 0.05rem 0.38rem;
-        border-radius: 999px;
-        background: rgba(15, 23, 42, 0.08);
+    .step-pill-num {
+        font-family: var(--adm-mono); font-size: 0.74rem; color: var(--adm-pos);
     }
-    .sign-chip.active .chip-count {
-        background: rgba(255, 255, 255, 0.25);
-        color: #fff;
+    .steps-actions-v2 {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px;
     }
-
-    /* Flexible Recording Settings Panel */
-    .rec-settings-box {
-        background: #f8fafc;
-        border: 1px solid var(--border-light);
-        border-radius: var(--radius-md);
-        padding: 0.85rem 1rem;
-        margin-bottom: 0.85rem;
+    .btn-capture-primary {
+        background: var(--adm-ink); color: #fff; border: 1px solid var(--adm-ink);
+        border-radius: 4px; height: 36px; padding: 0 14px;
+        font-family: var(--adm-sans); font-weight: 500; font-size: 0.84rem;
+        display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 2px 0 #091523;
     }
-    .rec-settings-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-        gap: 0.75rem;
-        margin-top: 0.65rem;
+    .btn-capture-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-capture-primary .keycap {
+        background: rgba(255, 255, 255, 0.16); color: #e2e8f0;
+        font-family: var(--adm-mono); font-size: 0.72rem;
+        padding: 1px 6px; border-radius: 2px;
     }
-    .rec-field label {
-        display: block;
-        font-size: 0.75rem;
-        font-weight: 800;
-        color: var(--text-muted);
-        margin-bottom: 0.25rem;
+    .btn-save-steps-v2 {
+        background: var(--adm-surface); color: var(--adm-ink);
+        border: 1px solid var(--adm-hairline-strong);
+        border-radius: 4px; height: 36px; padding: 0 14px;
+        font-family: var(--adm-sans); font-weight: 500; font-size: 0.84rem;
+        display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+        box-shadow: 0 1px 0 rgba(22, 50, 79, 0.06);
     }
-    .rec-field input[type="number"],
-    .rec-field select {
-        width: 100%;
-        padding: 0.4rem 0.6rem;
-        border-radius: 8px;
-        border: 1px solid rgba(108, 92, 231, 0.22);
-        font-family: var(--font-main);
-        font-size: 0.85rem;
-        font-weight: 800;
-        background: #fff;
+    .btn-save-steps-v2:disabled { opacity: 0.45; cursor: not-allowed; }
+    .quiet-link-btn {
+        border: none; background: transparent; color: var(--adm-text-muted);
+        font-family: var(--adm-sans); font-size: 0.8rem; font-weight: 500;
+        padding: 4px 8px; border-radius: 3px; cursor: pointer;
+    }
+    .quiet-link-btn.danger { color: var(--adm-neg); }
+    .quiet-link-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    @media (hover: hover) and (pointer: fine) {
+        .quiet-link-btn:hover:not(:disabled) { background: var(--adm-raised); color: var(--adm-ink); }
+        .quiet-link-btn.danger:hover:not(:disabled) { background: #fef2f2; }
     }
 
-    /* Recording Buttons */
     .studio-btn-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-        gap: 0.65rem;
+        display: flex; gap: 8px; flex-wrap: wrap;
     }
-    .studio-btn-row .btn {
-        width: 100%;
-        padding: 0.68rem 1rem;
-        font-size: 0.9rem;
-        justify-content: center;
-    }
-    .btn:disabled { opacity: 0.48; cursor: not-allowed; transform: none; box-shadow: none; }
-    .btn-danger { background: #fee2e2; color: #dc2626; border: none; }
-    .btn-danger:hover { background: #fecaca; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-danger { background: #fef2f2; color: var(--adm-neg); border: 1px solid #fecaca; }
 
     .studio-msg {
-        margin-top: 0.75rem;
-        font-size: 0.88rem;
-        font-weight: 800;
-        text-align: center;
-        min-height: 1.4em;
-        color: var(--text-muted);
-        padding: 0.45rem 0.75rem;
-        border-radius: var(--radius-sm);
-        background: #f8fafc;
+        margin-top: 12px; font-size: 0.8125rem; font-weight: 500;
+        min-height: 1.4em; color: var(--adm-text-muted);
+        padding: 8px 12px; border-radius: 4px; background: var(--adm-canvas);
+        border: 1px solid var(--adm-hairline);
     }
-    .studio-msg.ok { color: #15803d; background: #dcfce7; }
-    .studio-msg.err { color: #b91c1c; background: #fee2e2; }
+    .studio-msg.ok { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
+    .studio-msg.err { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
 
     .burst-track {
-        height: 8px;
-        background: #e2e8f0;
-        border-radius: 999px;
-        overflow: hidden;
-        margin-top: 0.65rem;
+        margin-top: 10px;
         display: none;
     }
     .burst-fill {
-        height: 100%;
         width: 0;
-        background: linear-gradient(90deg, #6c5ce7, #00cec9);
         transition: width 0.08s linear;
     }
 
-    /* Live Test Result */
     .test-result {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.9rem 1rem;
-        background: #f8fafc;
-        border-radius: var(--radius-md);
-        margin-top: 0.8rem;
-        border: 1px solid var(--border-light);
+        display: flex; align-items: center; gap: 16px;
+        padding: 12px 14px; background: var(--adm-canvas);
+        border-radius: 4px; border: 1px solid var(--adm-hairline);
     }
     .test-label {
-        font-size: 2.1rem;
-        font-weight: 900;
-        font-family: var(--font-display);
-        min-width: 88px;
-        text-align: center;
-        color: #5041c9;
-        word-break: break-word;
-        line-height: 1.1;
+        font-size: 1.35rem; font-weight: 500; font-family: var(--adm-mono);
+        font-variant-numeric: tabular-nums; min-width: 72px; text-align: center;
+        color: var(--adm-ink); line-height: 1.1;
     }
-    .test-bar {
-        flex: 1;
-        height: 11px;
-        background: #e2e8f0;
-        border-radius: 999px;
-        overflow: hidden;
+    .test-bar { flex: 1; }
+    .test-bar > div { width: 0; background: var(--adm-pos); }
+    .test-bar.adm-pixel-track--dark > div { background: #22c55e; }
+
+    /* Right Sign Picker */
+    .chip-scroll {
+        display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin;
     }
-    .test-bar > div {
-        height: 100%;
-        width: 0;
-        background: linear-gradient(90deg, #ff7675, #fdcb6e, #00b894);
-        transition: width 0.15s;
+    .sign-chip {
+        border: 1px solid var(--adm-hairline-strong);
+        background: var(--adm-surface);
+        color: var(--adm-ink);
+        padding: 4px 10px; border-radius: 4px;
+        font-size: 0.78rem; font-weight: 500; cursor: pointer;
+        white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .sign-chip.active { background: var(--adm-ink); border-color: var(--adm-ink); color: #fff; }
+    .sign-chip .chip-count {
+        font-family: var(--adm-mono); font-size: 0.72rem; font-variant-numeric: tabular-nums; opacity: 0.72;
     }
 
-    /* Interactive Sample Rows */
+    .filter-tablist {
+        display: flex; gap: 16px; border-bottom: 1px solid var(--adm-hairline);
+        margin-bottom: 10px; overflow-x: auto;
+    }
+    .filter-tab-btn {
+        position: relative; flex: none; border: none; background: transparent;
+        padding: 6px 0; font-family: var(--adm-sans); font-size: 0.8rem; font-weight: 500;
+        color: var(--adm-text-muted); cursor: pointer;
+    }
+    .filter-tab-btn.active { color: var(--adm-ink); }
+    .filter-tab-btn.active::after {
+        content: ""; position: absolute; inset: auto 0 0; border-block-end: 2px solid var(--adm-ink);
+    }
+
     .sample-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.55rem 0.8rem;
-        background: #f8fafc;
-        border-radius: var(--radius-sm);
-        font-size: 0.88rem;
-        border: 1.5px solid transparent;
-        cursor: pointer;
-        transition: all 0.15s ease;
+        display: flex; justify-content: space-between; align-items: center; gap: 8px;
+        padding: 8px 10px; background: var(--adm-surface); border-radius: 4px;
+        font-size: 0.84rem; border: 1px solid var(--adm-hairline); cursor: pointer;
     }
-    .sample-row:hover {
-        background: #f1f5f9;
-        border-color: rgba(108, 92, 231, 0.25);
+    @media (hover: hover) and (pointer: fine) {
+        .sample-row:hover { background: var(--adm-canvas); }
     }
-    .sample-row.active-target {
-        background: #f3f0ff;
-        border-color: var(--primary);
-    }
-    .sample-row.low .badge-static { background: #fef3c7 !important; color: #d97706 !important; }
+    .sample-row.active-target { background: var(--adm-raised); border-color: var(--adm-ink); }
     .icon-btn {
-        border: none;
-        background: transparent;
-        color: #94a3b8;
-        cursor: pointer;
-        padding: 0.28rem 0.45rem;
-        border-radius: 6px;
-        transition: all 0.15s ease;
+        border: none; background: transparent; color: var(--adm-text-muted);
+        cursor: pointer; padding: 4px 6px; border-radius: 3px;
     }
-    .icon-btn:hover { color: #dc2626; background: #fee2e2; }
+    @media (hover: hover) and (pointer: fine) {
+        .icon-btn:hover { color: var(--adm-neg); background: #fef2f2; }
+    }
 
+    .studio-disclosure-card { padding: 0; overflow: hidden; }
+    .studio-disclosure { border-bottom: 1px solid var(--adm-hairline); }
+    .studio-disclosure:last-child { border-bottom: none; }
+    .studio-disclosure summary {
+        list-style: none; padding: 12px 16px; font-size: 0.84rem; font-weight: 500;
+        color: var(--adm-ink); cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    }
+    .studio-disclosure summary::-webkit-details-marker { display: none; }
+    .studio-disclosure summary.danger-summary { color: var(--adm-neg); }
+    .studio-disclosure-body { padding: 0 16px 14px; }
+
+    /* Popover */
+    .camera-toolbar {
+        display: flex; flex-direction: column; gap: 10px;
+        padding: 12px; background: var(--adm-canvas);
+        border: 1px solid var(--adm-hairline); border-radius: 4px;
+    }
+    .camera-toolbar-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .rec-settings-box {
+        background: var(--adm-canvas); border: 1px solid var(--adm-hairline);
+        border-radius: 4px; padding: 12px;
+    }
+    .rec-settings-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+        gap: 10px; margin-top: 10px;
+    }
+    .rec-field label {
+        display: block; font-size: 0.75rem; font-weight: 500; color: var(--adm-text-muted); margin-bottom: 4px;
+    }
+    .rec-field input[type="number"], .rec-field select {
+        width: 100%; height: 34px; padding: 0 8px; border-radius: 4px;
+        border: 1px solid var(--adm-hairline-strong); font-family: var(--adm-sans);
+        font-size: 0.82rem; background: var(--adm-surface);
+    }
     .kbd-tag {
-        display: inline-block;
-        padding: 0.1rem 0.4rem;
-        font-size: 0.72rem;
-        font-weight: 800;
-        background: #e2e8f0;
-        color: #334155;
-        border-radius: 5px;
-        font-family: monospace;
+        display: inline-block; padding: 1px 5px; font-size: 0.72rem;
+        background: var(--adm-raised); color: var(--adm-ink);
+        border: 1px solid var(--adm-hairline-strong); border-radius: 2px; font-family: var(--adm-mono);
+    }
+    #studio-settings-popover {
+        width: min(560px, calc(100vw - 32px)); max-height: 82dvh; overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 20px; border: 1px solid var(--adm-hairline-strong); border-radius: 6px;
+        background: var(--adm-surface); box-shadow: 0 8px 24px rgba(15, 34, 56, 0.16); margin: auto;
+    }
+    #studio-settings-popover:is(:popover-open, .\:popover-open) { display: block; }
+    #studio-settings-popover::backdrop {
+        background: rgba(15, 34, 56, 0.42);
+        overflow: hidden;
+        overscroll-behavior: contain;
     }
 
-    /* Dedicated Camera Mode Switcher (Static KNN vs Dynamic DTW) */
-    .cam-mode-switcher {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-    }
-    @media (max-width: 640px) {
-        .cam-mode-switcher {
-            grid-template-columns: 1fr;
-        }
-    }
-    .cam-mode-tab {
-        border: 2px solid var(--border-light);
-        background: #f8fafc;
-        border-radius: var(--radius-md);
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        text-align: left;
-        display: flex;
-        align-items: center;
-        gap: 0.85rem;
-        transition: all 0.2s ease;
-        font-family: var(--font-main);
-    }
-    .cam-mode-tab:hover {
-        border-color: rgba(108, 92, 231, 0.4);
-        background: #fff;
-    }
-    .cam-mode-tab.active-static {
-        background: linear-gradient(135deg, #f3f0ff 0%, #ede9fe 100%);
-        border-color: #6c5ce7;
-        box-shadow: 0 4px 14px rgba(108, 92, 231, 0.14);
-    }
-    .cam-mode-tab.active-dynamic {
-        background: linear-gradient(135deg, #e0f2fe 0%, #e0e7ff 100%);
-        border-color: #0284c7;
-        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.15);
-    }
-    .cam-mode-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        flex-shrink: 0;
-        background: #e2e8f0;
-        color: #475569;
-    }
-    .cam-mode-tab.active-static .cam-mode-icon {
-        background: #6c5ce7;
-        color: #fff;
-    }
-    .cam-mode-tab.active-dynamic .cam-mode-icon {
-        background: #0284c7;
-        color: #fff;
+    @media (pointer: coarse) {
+        .cam-tool-btn, .seg-btn, .sign-chip, .stage-icon-btn, .btn-capture-primary, .btn-save-steps-v2 { min-height: 44px; }
     }
 </style>
 @endpush
 
 @section('content')
-{{-- HEADER & WORKSPACE MODE SWITCHER --}}
 <div class="studio-header">
     <div>
-        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-            <h1 style="font-size: 1.75rem; margin: 0;">Studio Kamera AI &amp; Latihan Data</h1>
-            <span class="role-badge" style="background: #e0f2fe; color: #0284c7;">Studio Fleksibel</span>
+        <h1>Studio latihan AI</h1>
+        <div class="studio-topbar-meta" style="margin-top: 2px;">
+            <span id="stat-total-samples">{{ $totalSamples }}</span> sampel &middot;
+            <span id="stat-total-static">{{ $totalStatic }}</span> statik &middot;
+            <span id="stat-total-seq">{{ $totalSequence }}</span> DTW &middot;
+            <span id="stat-total-steps">{{ $totalSteps ?? 0 }}</span> langkah
         </div>
-        <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 0.2rem;">
-            Rakam sampel sendi 3D (Statik &amp; Klip DTW), tukar kamera/nisbah skrin secara bebas, dan uji pengecaman masa nyata.
-        </p>
     </div>
 
-    <div class="studio-header-actions">
-        {{-- Layout Mode Switcher --}}
-        <div class="seg-group" title="Pilih susun atur ruang kerja">
-            <button type="button" class="seg-btn active" id="btn-layout-split">
-                <i class="fa-solid fa-table-columns"></i> Bersebelahan
-            </button>
-            <button type="button" class="seg-btn" id="btn-layout-wide">
-                <i class="fa-solid fa-expand"></i> Fokus Kamera Lebar
-            </button>
-        </div>
-
+    <div class="studio-header-actions" role="toolbar" aria-label="Tindakan studio">
+        <button type="button" class="btn btn-outline btn-sm" popovertarget="studio-settings-popover" id="btn-open-settings">
+            Tetapan &#9662;
+        </button>
         <a href="{{ route('admin.ai.export') }}" class="btn btn-primary btn-sm" id="btn-export">
-            <i class="fa-solid fa-file-csv"></i> Eksport CSV
+            Eksport CSV
         </a>
     </div>
 </div>
 
-<div class="studio-grid" id="studio-grid">
+{{-- NATIVE POPOVER: CAMERA & RECORDING SETTINGS (On-Demand Disclosure) --}}
+<div id="studio-settings-popover" popover="auto" aria-label="Tetapan kamera dan rakaman">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.9rem;">
+        <h2 style="font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; margin: 0; color: var(--primary);">Tetapan kamera &amp; rakaman</h2>
+        <button type="button" class="icon-btn" popovertarget="studio-settings-popover" popovertargetaction="hide" aria-label="Tutup tetapan">&times;</button>
+    </div>
 
-    {{-- ================= LEFT / MAIN: FLEXIBLE CAMERA WORKSPACE ================= --}}
+    <div style="display: flex; flex-direction: column; gap: 0.9rem;">
+        <div>
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Peranti &amp; paparan kamera</div>
+            <div class="camera-toolbar" style="margin-bottom: 0;">
+                <div class="camera-toolbar-group">
+                    <select id="camera-device-select" class="cam-select-compact" title="Pilih peranti kamera">
+                        <option value="">Kamera Lalai (Auto)</option>
+                    </select>
+                    <button type="button" class="cam-tool-btn" id="btn-refresh-devices" title="Imbas semula senarai kamera" aria-label="Imbas semula senarai kamera">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </button>
+                </div>
+                <div class="camera-toolbar-group">
+                    <div class="seg-group" title="Susun atur ruang kerja">
+                        <button type="button" class="seg-btn active" id="btn-layout-split">Bersebelahan</button>
+                        <button type="button" class="seg-btn" id="btn-layout-wide">Lebar</button>
+                    </div>
+                    <div class="seg-group" title="Nisbah Skrin Kamera">
+                        <button type="button" class="seg-btn active" data-ratio="4-3">4:3</button>
+                        <button type="button" class="seg-btn" data-ratio="16-9">16:9</button>
+                        <button type="button" class="seg-btn" data-ratio="1-1">1:1</button>
+                        <button type="button" class="seg-btn" data-ratio="auto">Auto</button>
+                    </div>
+                </div>
+                <div class="camera-toolbar-group">
+                    <button type="button" class="cam-tool-btn" id="btn-toggle-fit"><i class="fa-solid fa-compress"></i> <span id="fit-label">Penuh</span></button>
+                    <button type="button" class="cam-tool-btn active" id="btn-toggle-mirror"><i class="fa-solid fa-arrows-left-right"></i> Cermin</button>
+                    <button type="button" class="cam-tool-btn active" id="btn-toggle-skeleton"><i class="fa-solid fa-hand-sparkles"></i> Rangka</button>
+                    <button type="button" class="cam-tool-btn" id="btn-toggle-joints"><i class="fa-solid fa-hashtag"></i> 0-20</button>
+                    <button type="button" class="cam-tool-btn" id="btn-toggle-hands"><i class="fa-solid fa-hands"></i> <span id="hands-label">1 Tangan</span></button>
+                    <button type="button" class="cam-tool-btn active" id="btn-toggle-face"><i class="fa-solid fa-face-smile"></i> AI Wajah</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="rec-settings-box" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" id="btn-toggle-rec-settings" style="border: none; background: transparent; font-family: var(--font-main); font-weight: 600; font-size: 0.82rem; color: var(--primary); cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <span>Parameter rakaman</span>
+                    <span id="rec-summary-pill" style="font-family: var(--adm-mono); font-size: 0.74rem; color: var(--adm-ink); background: var(--adm-raised); border: 1px solid var(--adm-hairline-strong); padding: 1px 6px; border-radius: 2px;">Detik: 3s</span>
+                    <i class="fa-solid fa-chevron-down" id="rec-settings-chevron" style="font-size: 0.72rem; color: var(--text-muted);"></i>
+                </button>
+                <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; font-size: 0.74rem; color: var(--text-muted);">
+                    <span id="kbd-static-1"><kbd class="kbd-tag">Space</kbd> Tangkap</span>
+                    <span id="kbd-static-burst"><kbd class="kbd-tag">B</kbd> Burst</span>
+                    <span id="kbd-dynamic-seq" style="display: none;"><kbd class="kbd-tag">G</kbd> Gerakan</span>
+                    <span><kbd class="kbd-tag">T</kbd> Uji</span>
+                </div>
+            </div>
+            <div id="rec-settings-panel" style="display: block;">
+                <div class="rec-settings-grid">
+                    <div class="rec-field">
+                        <label for="cfg-countdown">Kiraan detik</label>
+                        <select id="cfg-countdown">
+                            <option value="0">0 saat (Terus)</option>
+                            <option value="1">1 saat</option>
+                            <option value="3" selected>3 saat</option>
+                            <option value="5">5 saat</option>
+                        </select>
+                    </div>
+                    <div class="rec-field" id="field-burst-count">
+                        <label for="cfg-burst-count">Sampel statik (Burst)</label>
+                        <input type="number" id="cfg-burst-count" min="5" max="200" step="5" value="30">
+                    </div>
+                    <div class="rec-field" id="field-seq-mode" style="display: none;">
+                        <label for="cfg-seq-mode">Mod rakaman gerakan</label>
+                        <select id="cfg-seq-mode">
+                            <option value="auto" selected>Auto Mula–Gerak–Tamat</option>
+                            <option value="manual">Bilangan Frame Tetap (Manual)</option>
+                        </select>
+                    </div>
+                    <div class="rec-field" id="field-seq-frames" style="display: none;">
+                        <label for="cfg-seq-frames">Had frame klip (DTW)</label>
+                        <input type="number" id="cfg-seq-frames" min="10" max="90" step="5" value="30">
+                    </div>
+                    <div class="rec-field" id="field-burst-interval">
+                        <label for="cfg-burst-interval">Selang statik</label>
+                        <select id="cfg-burst-interval">
+                            <option value="50">50ms</option>
+                            <option value="100" selected>100ms</option>
+                            <option value="180">180ms</option>
+                        </select>
+                    </div>
+                    <div class="rec-field">
+                        <label for="cfg-confidence">Sensitiviti: <span id="cfg-conf-val">55%</span></label>
+                        <input type="range" id="cfg-confidence" min="30" max="85" step="5" value="55" style="width: 100%; accent-color: var(--primary); margin-top: 0.35rem;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="studio-grid-v2" id="studio-grid">
+
+    {{-- ================= LEFT: ONE FOCUSED RECORDING & TESTING CONSOLE ================= --}}
     <div class="studio-main-col">
-        <div class="card" style="padding: 1.35rem; margin-bottom: 1.25rem;">
+        <div class="card console-card">
 
-            {{-- 0. DEDICATED STATIC VS DYNAMIC CAMERA MODE SWITCHER --}}
-            <div class="cam-mode-switcher" id="cam-mode-switcher">
-                <button type="button" class="cam-mode-tab active-static" id="btn-cam-mode-static" data-cam-mode="static">
-                    <div class="cam-mode-icon"><i class="fa-solid fa-hand"></i></div>
-                    <div>
-                        <div style="font-weight: 900; font-size: 0.95rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.4rem;">
-                            <span>Kamera Isyarat Statik (Pegun)</span>
-                            <span class="role-badge" style="background: #6c5ce7; color: #fff; font-size: 0.68rem;">KNN</span>
-                        </div>
-                        <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.1rem;">
-                            Huruf A–Y &amp; Nombor 0–9 (Tangan dipegang pegun tanpa gangguan gerakan DTW)
-                        </div>
-                    </div>
-                </button>
+            {{-- Single-Row Underline Mode Tabs + Rakam / Uji Toggle --}}
+            <div class="console-tabs-bar">
+                <div class="mode-tablist" id="cam-mode-switcher" role="tablist" aria-label="Mod pengecaman kamera">
+                    <button type="button" class="mode-tab-btn" id="btn-cam-mode-steps" data-cam-mode="steps" role="tab" aria-selected="false">
+                        Urutan langkah
+                    </button>
+                    <button type="button" class="mode-tab-btn" id="btn-cam-mode-dynamic" data-cam-mode="dynamic" role="tab" aria-selected="false">
+                        Dinamik (DTW)
+                    </button>
+                    <button type="button" class="mode-tab-btn" id="btn-cam-mode-static" data-cam-mode="static" role="tab" aria-selected="true">
+                        Statik (KNN)
+                    </button>
+                </div>
 
-                <button type="button" class="cam-mode-tab" id="btn-cam-mode-dynamic" data-cam-mode="dynamic">
-                    <div class="cam-mode-icon"><i class="fa-solid fa-film"></i></div>
-                    <div>
-                        <div style="font-weight: 900; font-size: 0.95rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.4rem;">
-                            <span>Kamera Isyarat Dinamik (Gerakan)</span>
-                            <span class="role-badge" style="background: #0284c7; color: #fff; font-size: 0.68rem;">DTW + Wajah</span>
-                        </div>
-                        <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.1rem;">
-                            J, Z, 10, Salam, Keluarga, Perasaan &amp; Perkataan (Klip urutan 30-frame terasing)
-                        </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0;">
+                    <div id="live-tester-mode-wrap" style="display: none; gap: 0.2rem; background: #f1f5f9; padding: 0.2rem; border-radius: 8px;">
+                        <button type="button" class="seg-btn active" id="btn-test-mode-open" title="Uji semua templat gerakan serentak">Open-Set</button>
+                        <button type="button" class="seg-btn" id="btn-test-mode-target" title="Simulasi penilaian ketat pelajar untuk isyarat sasaran">Simulasi Pelajar</button>
                     </div>
-                </button>
+                    <button type="button" class="cam-tool-btn" id="btn-toggle-test" disabled>
+                        <i class="fa-solid fa-play"></i> Uji cuba
+                    </button>
+                </div>
             </div>
 
-            {{-- 1. TARGET SIGN BAR (WITH STEPPER, CATEGORY FILTER & CHIPS) --}}
-            <div class="target-selector-box">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.55rem; flex-wrap: wrap; gap: 0.5rem;">
-                    <label for="sign-search-input" style="font-weight: 800; font-size: 0.88rem; display: flex; align-items: center; gap: 0.45rem; color: var(--text-dark);">
-                        <i class="fa-solid fa-bullseye" style="color: var(--primary);"></i>
-                        <span>Isyarat Sasaran Aktif:</span>
-                        <strong id="active-sign-text" style="color: #6c5ce7; font-size: 0.95rem; background: #eeebff; padding: 0.1rem 0.55rem; border-radius: 6px;">A</strong>
-                        <span id="active-sign-sample-count" style="font-size: 0.8rem; color: #16a34a; font-weight: 800;"></span>
-                    </label>
-
-                    <div style="display: flex; gap: 0.4rem; align-items: center;">
-                        <button type="button" class="cam-tool-btn" id="btn-prev-sign" title="Isyarat Sebelumnya">
-                            <i class="fa-solid fa-chevron-left"></i>
+            <div class="console-body">
+                {{-- Active Target Row --}}
+                <div class="console-target-row">
+                    <div style="display: flex; align-items: baseline; gap: 0.65rem; flex-wrap: wrap;">
+                        <h2 class="console-target-title" id="active-sign-text">A</h2>
+                        <span id="active-sign-sample-count" style="font-size: 0.82rem; color: var(--text-muted); font-weight: 700;"></span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.4rem;" role="toolbar" aria-label="Navigasi isyarat dan kamera">
+                        <button type="button" class="cam-tool-btn" id="btn-prev-sign" aria-label="Isyarat sebelumnya" title="Isyarat sebelumnya">
+                            <i class="fa-solid fa-arrow-left"></i>
                         </button>
-                        <button type="button" class="cam-tool-btn" id="btn-next-sign" title="Isyarat Seterusnya">
-                            <i class="fa-solid fa-chevron-right"></i>
+                        <button type="button" class="cam-tool-btn" id="btn-next-sign" aria-label="Isyarat seterusnya" title="Isyarat seterusnya">
+                            <i class="fa-solid fa-arrow-right"></i>
                         </button>
-                        <button type="button" class="cam-tool-btn" id="btn-toggle-new-sign" style="border-color: #6c5ce7; color: #6c5ce7;">
-                            <i class="fa-solid fa-plus"></i> Isyarat Baru
+                        <button type="button" class="cam-tool-btn" id="btn-reload-model" title="Segar semula model AI" aria-label="Segar semula model AI">
+                            <i class="fa-solid fa-rotate"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm" id="btn-cancel-record" style="display: none;">
+                            <i class="fa-solid fa-xmark"></i> Batal
+                        </button>
+                        <button type="button" class="cam-tool-btn" id="btn-stop-camera" style="display: none;">
+                            <i class="fa-solid fa-stop"></i> Tutup kamera
                         </button>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                    {{-- Searchable / Custom Label Input --}}
-                    <div style="flex: 1; min-width: 200px; position: relative;">
-                        <input type="text"
-                               id="sign-search-input"
-                               class="form-input"
-                               list="sign-datalist"
-                               placeholder="Taip atau cari label (cth: A, B, TERIMA_KASIH)..."
-                               value="A"
-                               autocomplete="off"
-                               style="padding: 0.5rem 0.8rem 0.5rem 2.1rem; font-weight: 800; font-size: 0.92rem; text-transform: uppercase;">
-                        <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; pointer-events: none;"></i>
+                <div id="sign-motion-hint" style="display: none; margin-bottom: 0.7rem; padding: 0.45rem 0.75rem; background: #f8fafc; border: 1px solid rgba(22, 50, 79, 0.1); border-radius: 8px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;"></div>
+
+                {{-- Camera Viewport Stage (Hero Moment) --}}
+                <div class="studio-stage" id="studio-stage" style="margin-bottom: 0.85rem;">
+                    <video id="studio-video" autoplay muted playsinline style="display: none;"></video>
+                    <canvas id="studio-canvas"></canvas>
+
+                    <div class="pixel-reticle" aria-hidden="true">
+                        <span class="pixel-corner pixel-corner--tl"></span>
+                        <span class="pixel-corner pixel-corner--tr"></span>
+                        <span class="pixel-corner pixel-corner--bl"></span>
+                        <span class="pixel-corner pixel-corner--br"></span>
                     </div>
 
-                    <datalist id="sign-datalist">
-                        @foreach($categories as $cat)
-                            @foreach($cat->signs as $s)
-                                <option value="{{ $s->label }}">{{ $s->word }} ({{ $cat->name }})</option>
-                            @endforeach
-                        @endforeach
-                    </datalist>
+                    <div class="studio-hud" id="studio-hud" style="display: none;">
+                        <div class="hud-stack">
+                            <span class="hud-pill" id="hud-cam-mode" style="background: rgba(22, 50, 79, 0.92);">Mod Statik</span>
+                            <span class="hud-pill warn" id="hud-hand">Tiada tangan</span>
+                            <span class="hud-pill" id="hud-face" style="display: none;">Wajah</span>
+                            <span class="hud-pill" id="hud-dtw-buffer" style="display: none; background: rgba(2, 132, 199, 0.88);">DTW: 0/30f</span>
+                            <span class="hud-pill target" style="display: none;">Sasaran: <span id="hud-target-label">A</span></span>
+                        </div>
+                        <div class="hud-stack">
+                            <span class="hud-pill" id="hud-res" style="display: none;">—</span>
+                            <span class="hud-pill" id="hud-fps">0 FPS</span>
+                        </div>
+                    </div>
 
-                    {{-- Module Filter for Quick Chips --}}
-                    <select id="category-chip-filter" class="form-select" style="width: auto; max-width: 175px; font-weight: 700; font-size: 0.85rem; padding: 0.5rem 0.75rem;" title="Tapis cip mengikut modul">
+                    <div class="studio-countdown" id="studio-countdown">3</div>
+
+                    <div class="hud-live-test" id="hud-live-test">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
+                            <div class="hud-live-label" id="hud-test-label">—</div>
+                            <div style="flex: 1;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.25rem;">
+                                    <span>Padanan langsung</span>
+                                    <span id="hud-test-conf">0%</span>
+                                </div>
+                                <div class="adm-pixel-track adm-pixel-track--dark test-bar">
+                                    <div class="adm-pixel-fill" id="hud-test-bar"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stage-fs-controls">
+                        <button type="button" class="stage-icon-btn" id="btn-fullscreen" title="Skrin penuh" aria-label="Skrin penuh">
+                            <i class="fa-solid fa-maximize" id="fs-icon"></i>
+                        </button>
+                    </div>
+
+                    <div id="studio-placeholder" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #e2e8f0; padding: 24px; text-align: center; z-index: 3;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; margin-bottom: 10px;" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                        <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px; color: #fff;">Kamera studio sedia</div>
+                        <p style="color: #94a3b8; font-size: 0.84rem; max-width: 320px; margin: 0 0 14px;">
+                            Hidupkan kamera untuk merakam atau menguji isyarat secara langsung
+                        </p>
+                        <button type="button" class="btn btn-outline btn-sm" id="btn-start-camera" style="background: #fff; color: #16324f;">
+                            Buka kamera
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Compact Live Test Readout (kept slim inside Console) --}}
+                <div class="test-result" id="live-tester-strip" style="margin-top: 0; margin-bottom: 0.85rem; display: none;">
+                    <div class="test-label" id="test-label" style="font-size: 1.65rem; min-width: 76px;">—</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem;">
+                            <span id="live-tester-title">Uji pengecaman langsung</span>
+                            <span id="test-conf">0%</span>
+                        </div>
+                        <div class="adm-pixel-track test-bar"><div class="adm-pixel-fill" id="test-bar"></div></div>
+                        <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.35rem;" id="test-info">Model sedia</div>
+                        <span id="live-tester-desc" style="display: none;"></span>
+                    </div>
+                </div>
+
+                {{-- Recording Controls: Static / DTW --}}
+                <div class="studio-btn-row" id="classic-record-row">
+                    <button type="button" class="btn btn-primary" id="btn-record-one" disabled>
+                        <i class="fa-solid fa-record-vinyl"></i> Rakam 1 statik
+                    </button>
+                    <button type="button" class="btn btn-accent" id="btn-record-burst" disabled>
+                        <i class="fa-solid fa-burst"></i> <span id="lbl-record-burst">Rakam statik (30)</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="btn-record-sequence" disabled style="display: none; background: var(--primary); color: #fff;">
+                        <i class="fa-solid fa-film"></i> <span id="lbl-record-seq">Rakam Auto Mula–Gerak–Tamat</span>
+                    </button>
+                </div>
+
+                {{-- Recording Controls: Urutan Langkah (V2 Clean Timeline + 1 Primary + 1 Secondary) --}}
+                <div id="steps-recorder-panel" class="steps-panel-v2">
+                    <div class="steps-panel-head" style="margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted);">Urutan semasa (2–6 pose)</span>
+                        <div class="steps-meta-inputs">
+                            <input type="text" id="input-step-name" class="steps-name-input" maxlength="40" placeholder="Label langkah (pilihan)">
+                            <label class="steps-countdown-toggle">
+                                <input type="checkbox" id="chk-step-countdown" checked> Detik 2s
+                            </label>
+                        </div>
+                    </div>
+                    <div id="steps-draft-list" class="steps-timeline" style="margin-bottom: 0;">
+                        <span style="font-size: 0.82rem; color: var(--text-muted);">Belum ada langkah. Tekan Tangkap langkah atau Space.</span>
+                    </div>
+                    <div class="steps-actions-v2">
+                        <button type="button" class="btn-capture-primary" id="btn-capture-step" disabled>
+                            <span>Tangkap langkah <span id="lbl-next-step-num">1</span></span>
+                            <span class="keycap">Space</span>
+                        </button>
+                        <button type="button" class="btn-save-steps-v2" id="btn-save-steps" disabled>
+                            <i class="fa-solid fa-check"></i> Simpan urutan
+                        </button>
+                        <div style="display: flex; align-items: center; gap: 0.35rem; margin-inline-start: auto; flex-wrap: wrap;">
+                            <button type="button" class="quiet-link-btn" id="btn-undo-step" disabled>Buang terakhir</button>
+                            <button type="button" class="quiet-link-btn" id="btn-reset-steps" disabled>Set semula</button>
+                            <button type="button" class="quiet-link-btn danger" id="btn-clear-steps">Padam</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="adm-pixel-track burst-track" id="burst-progress"><div class="adm-pixel-fill burst-fill" id="burst-fill"></div></div>
+                <div class="adm-loading-bar" id="studio-loading-bar" style="display: none; margin-top: 10px;" role="status" aria-live="polite">
+                    <span class="adm-loading-label" id="studio-loading-label">LOADING...</span>
+                    <div class="adm-loading-track is-animating" aria-hidden="true">
+                        <span class="adm-loading-cell"></span>
+                        <span class="adm-loading-cell"></span>
+                        <span class="adm-loading-cell"></span>
+                        <span class="adm-loading-cell"></span>
+                        <span class="adm-loading-cell"></span>
+                    </div>
+                </div>
+                <div class="studio-msg" id="record-status" style="text-align: left;">Sedia untuk merakam data</div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ================= RIGHT: FOCUSED SIGN PICKER + COLLAPSED DISCLOSURES ================= --}}
+    <div class="studio-side-col">
+        <div class="card" style="padding: 1.15rem; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.5rem;">
+                <h2 style="font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; margin: 0; color: var(--primary);">Senarai isyarat</h2>
+                <button type="button" class="cam-tool-btn" id="btn-toggle-new-sign">
+                    <i class="fa-solid fa-plus"></i> Baru
+                </button>
+            </div>
+
+            {{-- Inline New Sign Creator --}}
+            <div id="new-sign-box" style="display: none; margin-bottom: 0.8rem; padding: 0.85rem; background: #f8fafc; border-radius: 10px; border: 1px solid rgba(22, 50, 79, 0.14);">
+                <div style="font-weight: 700; font-size: 0.84rem; margin-bottom: 0.55rem; color: var(--primary); display: flex; justify-content: space-between; align-items: center;">
+                    <span>Daftar isyarat baru</span>
+                    <button type="button" class="icon-btn" id="btn-close-new-sign" aria-label="Tutup">&times;</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <div>
+                        <label for="new-sign-word" style="font-size: 0.74rem; font-weight: 700; display: block; margin-bottom: 0.2rem;">Perkataan</label>
+                        <input type="text" id="new-sign-word" class="form-input" placeholder="cth: Makan" style="font-size: 0.82rem; padding: 0.38rem 0.55rem;">
+                    </div>
+                    <div>
+                        <label for="new-sign-label" style="font-size: 0.74rem; font-weight: 700; display: block; margin-bottom: 0.2rem;">Label AI</label>
+                        <input type="text" id="new-sign-label" class="form-input" placeholder="MAKAN" style="font-size: 0.82rem; padding: 0.38rem 0.55rem; text-transform: uppercase;">
+                    </div>
+                    <div>
+                        <label for="new-sign-category" style="font-size: 0.74rem; font-weight: 700; display: block; margin-bottom: 0.2rem;">Kategori</label>
+                        <select id="new-sign-category" class="form-select" style="font-size: 0.82rem; padding: 0.38rem 0.55rem;">
+                            @foreach($allCategories as $c)
+                                <option value="{{ $c->id }}">{{ $c->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label for="new-sign-type" style="font-size: 0.74rem; font-weight: 700; display: block; margin-bottom: 0.2rem;">Jenis</label>
+                        <select id="new-sign-type" class="form-select" style="font-size: 0.82rem; padding: 0.38rem 0.55rem;">
+                            <option value="0">Dinamik</option>
+                            <option value="1">Statik</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-save-new-sign" style="width: 100%; margin-top: 0.6rem;">
+                    <i class="fa-solid fa-check"></i> Simpan isyarat
+                </button>
+            </div>
+
+            {{-- Search & Quick Label Input --}}
+            <div style="position: relative; margin-bottom: 0.6rem;">
+                <input type="text" id="sign-search-input" class="form-input" list="sign-datalist" placeholder="Cari atau taip label (cth: BUKU)" value="A" autocomplete="off" style="padding: 0.48rem 0.75rem 0.48rem 2rem; font-size: 0.84rem; font-weight: 700; text-transform: uppercase;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.8rem; pointer-events: none;"></i>
+                <datalist id="sign-datalist">
+                    @foreach($categories as $cat)
+                        @foreach($cat->signs as $s)
+                            <option value="{{ $s->label }}">{{ $s->word }} ({{ $cat->name }})</option>
+                        @endforeach
+                    @endforeach
+                </datalist>
+            </div>
+
+            {{-- Curriculum Quick Chips (compact single-row scroll) --}}
+            <div class="chip-scroll" id="quick-sign-chips" style="margin-top: 0; margin-bottom: 0.65rem;">
+                @foreach($categories as $cat)
+                    @foreach($cat->signs as $s)
+                        <button type="button" class="sign-chip" data-label="{{ strtoupper($s->label) }}" data-cat="cat-{{ $cat->id }}" data-static="{{ $s->is_static ? '1' : '0' }}" title="{{ $s->word }} ({{ $cat->name }})">
+                            <span>{{ $s->word }}</span>
+                            <span class="chip-count" data-chip-count="{{ strtoupper($s->label) }}">0</span>
+                        </button>
+                    @endforeach
+                @endforeach
+            </div>
+
+            {{-- Filter Tabs for Saved Dataset --}}
+            <div class="filter-tablist" role="tablist" aria-label="Tapis senarai sampel">
+                <button type="button" class="filter-tab-btn active" data-list-filter="all">Semua</button>
+                <button type="button" class="filter-tab-btn" data-list-filter="steps">Langkah</button>
+                <button type="button" class="filter-tab-btn" data-list-filter="seq">DTW</button>
+                <button type="button" class="filter-tab-btn" data-list-filter="low">&lt;50</button>
+            </div>
+
+            <input type="text" id="sample-filter-input" class="form-input" placeholder="Tapis senarai tersimpan..." style="margin-bottom: 0.6rem; padding: 0.38rem 0.65rem; font-size: 0.8rem;">
+
+            <div id="sample-list-msg" style="display: none; padding: 0.5rem 0.7rem; border-radius: 8px; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.6rem;"></div>
+            <div style="max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.35rem; padding-right: 0.15rem;" id="sample-list"></div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.65rem;">Klik mana-mana isyarat untuk mula rakam</div>
+        </div>
+
+        {{-- COLLAPSED SECONDARY DISCLOSURES (On-Demand via <details>) --}}
+        <div class="card studio-disclosure-card">
+            <details class="studio-disclosure">
+                <summary><span>&#9656; Pilih pantas ikut modul</span></summary>
+                <div class="studio-disclosure-body" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <select id="category-chip-filter" class="form-select" style="font-size: 0.82rem; padding: 0.42rem 0.65rem;">
                         <option value="ALL">Semua Modul</option>
                         @foreach($categories as $cat)
-                            <option value="cat-{{ $cat->id }}">{{ $cat->icon }} {{ $cat->name }}</option>
+                            <option value="cat-{{ $cat->id }}">{{ $cat->name }}</option>
                         @endforeach
                     </select>
-
-                    {{-- Quick Select Companion --}}
-                    <select id="sign-select-dropdown" class="form-select" style="width: auto; max-width: 190px; font-weight: 700; font-size: 0.85rem; padding: 0.5rem 0.75rem;" title="Pilih pantas isyarat">
+                    <select id="sign-select-dropdown" class="form-select" style="font-size: 0.82rem; padding: 0.42rem 0.65rem;">
                         <option value="">-- Pilih Pantas --</option>
                         @foreach($categories as $cat)
                             <optgroup label="{{ $cat->name }}">
@@ -692,401 +882,56 @@
                         @endforeach
                     </select>
                 </div>
+            </details>
 
-                {{-- One-Click Sign Chips Strip --}}
-                <div class="chip-scroll" id="quick-sign-chips">
-                    @foreach($categories as $cat)
-                        @foreach($cat->signs as $s)
-                            <button type="button"
-                                    class="sign-chip"
-                                    data-label="{{ strtoupper($s->label) }}"
-                                    data-cat="cat-{{ $cat->id }}"
-                                    data-static="{{ $s->is_static ? '1' : '0' }}"
-                                    title="{{ $s->word }} ({{ $cat->name }})">
-                                <span>{{ $s->word }}</span>
-                                <span class="chip-count" data-chip-count="{{ strtoupper($s->label) }}">0</span>
-                            </button>
-                        @endforeach
-                    @endforeach
-                </div>
-
-                {{-- Motion Guidance Notice for I & J --}}
-                <div id="sign-motion-hint" style="display: none; margin-top: 0.55rem; padding: 0.55rem 0.85rem; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: var(--radius-sm); font-size: 0.8rem; color: #0369a1; line-height: 1.4;"></div>
-
-                {{-- Inline New Sign Creator --}}
-                <div id="new-sign-box" style="display: none; margin-top: 0.8rem; padding: 0.9rem; background: #ffffff; border-radius: var(--radius-md); border: 2px dashed #6c5ce7;">
-                    <div style="font-weight: 800; font-size: 0.88rem; margin-bottom: 0.65rem; color: #5041c9; display: flex; justify-content: space-between; align-items: center;">
-                        <span><i class="fa-solid fa-plus-circle"></i> Daftar Isyarat Baru ke Kurikulum BIM</span>
-                        <button type="button" class="icon-btn" id="btn-close-new-sign" style="font-size: 1.1rem; line-height: 1;" title="Tutup">&times;</button>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 0.65rem; align-items: flex-end;">
-                        <div>
-                            <label for="new-sign-word" style="font-size: 0.76rem; font-weight: 800; display: block; margin-bottom: 0.25rem;">Perkataan:</label>
-                            <input type="text" id="new-sign-word" class="form-input" placeholder="cth: Makan" style="font-size: 0.85rem; padding: 0.42rem 0.65rem;">
-                        </div>
-                        <div>
-                            <label for="new-sign-label" style="font-size: 0.76rem; font-weight: 800; display: block; margin-bottom: 0.25rem;">Label AI:</label>
-                            <input type="text" id="new-sign-label" class="form-input" placeholder="cth: MAKAN" style="font-size: 0.85rem; padding: 0.42rem 0.65rem; text-transform: uppercase;">
-                        </div>
-                        <div>
-                            <label for="new-sign-category" style="font-size: 0.76rem; font-weight: 800; display: block; margin-bottom: 0.25rem;">Kategori:</label>
-                            <select id="new-sign-category" class="form-select" style="font-size: 0.85rem; padding: 0.42rem 0.65rem;">
-                                @foreach($allCategories as $c)
-                                    <option value="{{ $c->id }}">{{ $c->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label for="new-sign-type" style="font-size: 0.76rem; font-weight: 800; display: block; margin-bottom: 0.25rem;">Jenis:</label>
-                            <select id="new-sign-type" class="form-select" style="font-size: 0.85rem; padding: 0.42rem 0.65rem;">
-                                <option value="1">Statik (Pegun)</option>
-                                <option value="0">Dinamik (Gerakan)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <button type="button" class="btn btn-primary btn-sm" id="btn-save-new-sign" style="width: 100%; height: 36px;">
-                                <i class="fa-solid fa-check"></i> Simpan
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- 2. FLEXIBLE CAMERA CONTROLS TOOLBAR --}}
-            <div class="camera-toolbar">
-                <div class="camera-toolbar-group">
-                    <i class="fa-solid fa-video" style="color: var(--secondary); font-size: 0.9rem;"></i>
-                    <select id="camera-device-select" class="cam-select-compact" title="Pilih peranti kamera">
-                        <option value="">Kamera Lalai (Auto)</option>
-                    </select>
-                    <button type="button" class="cam-tool-btn" id="btn-refresh-devices" title="Imbas semula senarai kamera">
-                        <i class="fa-solid fa-arrows-rotate"></i>
-                    </button>
-                </div>
-
-                <div class="camera-toolbar-group">
-                    {{-- Aspect Ratio Selector --}}
-                    <div class="seg-group" title="Nisbah Skrin Kamera">
-                        <button type="button" class="seg-btn active" data-ratio="4-3">4:3</button>
-                        <button type="button" class="seg-btn" data-ratio="16-9">16:9</button>
-                        <button type="button" class="seg-btn" data-ratio="1-1">1:1</button>
-                        <button type="button" class="seg-btn" data-ratio="auto">Auto</button>
-                    </div>
-
-                    {{-- Fit Mode --}}
-                    <button type="button" class="cam-tool-btn" id="btn-toggle-fit" title="Tukar mod paparan Penuh (Cover) atau Muat (Contain)">
-                        <i class="fa-solid fa-compress"></i> <span id="fit-label">Penuh</span>
-                    </button>
-
-                    {{-- Mirror --}}
-                    <button type="button" class="cam-tool-btn active" id="btn-toggle-mirror" title="Pantulan Cermin (Pintasan: M)">
-                        <i class="fa-solid fa-arrows-left-right"></i> Cermin
-                    </button>
-
-                    {{-- Skeleton & Joint Numbers --}}
-                    <button type="button" class="cam-tool-btn active" id="btn-toggle-skeleton" title="Papar/Sembunyi Rangka Sendi">
-                        <i class="fa-solid fa-hand-sparkles"></i> Rangka
-                    </button>
-                    <button type="button" class="cam-tool-btn" id="btn-toggle-joints" title="Papar Indeks Sendi (0-20)">
-                        <i class="fa-solid fa-hashtag"></i> 0-20
-                    </button>
-
-                    {{-- 1 vs 2 Hands --}}
-                    <button type="button" class="cam-tool-btn" id="btn-toggle-hands" title="Bilangan tangan dikesan">
-                        <i class="fa-solid fa-hands"></i> <span id="hands-label">1 Tangan</span>
-                    </button>
-
-                    {{-- Face AI (Spatial Anchor + Expression Blendshapes) --}}
-                    <button type="button" class="cam-tool-btn active" id="btn-toggle-face" title="Pengesan Wajah & Ekspresi BIM (Zon Dahi/Mata/Pipi/Mulut & Emosi)">
-                        <i class="fa-solid fa-face-smile"></i> AI Wajah
-                    </button>
-                </div>
-            </div>
-
-            {{-- 3. LIVE CAMERA VIEWPORT STAGE --}}
-            <div class="studio-stage" id="studio-stage">
-                <video id="studio-video" autoplay muted playsinline style="display: none;"></video>
-                <canvas id="studio-canvas"></canvas>
-
-                {{-- Top HUD --}}
-                <div class="studio-hud" id="studio-hud" style="display: none;">
-                    <div class="hud-stack">
-                        <span class="hud-pill" id="hud-cam-mode" style="background: rgba(108, 92, 231, 0.92);">🖐️ Mod Statik</span>
-                        <span class="hud-pill warn" id="hud-hand">Tiada tangan</span>
-                        <span class="hud-pill" id="hud-face" style="background: rgba(14, 116, 144, 0.85);">Wajah: Memuat...</span>
-                        <span class="hud-pill" id="hud-dtw-buffer" style="display: none; background: rgba(2, 132, 199, 0.88);">Jejak DTW: 0/30f</span>
-                        <span class="hud-pill target">Sasaran: <span id="hud-target-label">A</span></span>
-                    </div>
-                    <div class="hud-stack">
-                        <span class="hud-pill" id="hud-res">—</span>
-                        <span class="hud-pill" id="hud-fps">0 FPS</span>
-                    </div>
-                </div>
-
-                {{-- Countdown Overlay --}}
-                <div class="studio-countdown" id="studio-countdown">3</div>
-
-                {{-- Floating Live Prediction Overlay (Active during Uji Model) --}}
-                <div class="hud-live-test" id="hud-live-test">
-                    <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1;">
-                        <div class="hud-live-label" id="hud-test-label">—</div>
-                        <div style="flex: 1;">
-                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 800; margin-bottom: 0.25rem;">
-                                <span>Padanan AI Langsung</span>
-                                <span id="hud-test-conf">0%</span>
-                            </div>
-                            <div class="test-bar" style="height: 8px; background: rgba(255,255,255,0.2);">
-                                <div id="hud-test-bar"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Bottom-Right Floating Stage Buttons (Fullscreen & Quick Stop) --}}
-                <div class="stage-fs-controls">
-                    <button type="button" class="stage-icon-btn" id="btn-fullscreen" title="Skrin Penuh (Fullscreen)">
-                        <i class="fa-solid fa-maximize" id="fs-icon"></i>
-                    </button>
-                </div>
-
-                {{-- Camera Closed Placeholder --}}
-                <div id="studio-placeholder" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; padding: 1.5rem; text-align: center; z-index: 3;">
-                    <div style="font-size: 3rem; margin-bottom: 0.4rem; color: var(--secondary);">📹</div>
-                    <div style="font-weight: 800; font-size: 1.05rem; margin-bottom: 0.25rem;">Studio Kamera AI Sedia</div>
-                    <p style="color: #94a3b8; font-size: 0.85rem; max-width: 340px; margin-bottom: 1rem;">
-                        Pilih peranti kamera di atas atau terus buka kamera untuk mula merakam dan menguji isyarat.
+            <details class="studio-disclosure">
+                <summary><span>&#9656; Import dataset CSV</span></summary>
+                <div class="studio-disclosure-body">
+                    <p style="color: var(--text-muted); font-size: 0.78rem; margin: 0 0 0.55rem;">
+                        Menyokong <code>label, lm0_x … lm20_z</code> atau <code>label, x0 … z20</code>.
                     </p>
-                    <button type="button" class="btn btn-secondary" id="btn-start-camera">
-                        <i class="fa-solid fa-play"></i> Buka Kamera Studio
-                    </button>
-                </div>
-            </div>
-
-            {{-- 4. FLEXIBLE RECORDING PARAMETERS BAR --}}
-            <div class="rec-settings-box">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                    <button type="button" id="btn-toggle-rec-settings" style="border: none; background: transparent; font-family: var(--font-main); font-weight: 800; font-size: 0.84rem; color: var(--text-dark); cursor: pointer; display: inline-flex; align-items: center; gap: 0.45rem;">
-                        <i class="fa-solid fa-sliders" style="color: var(--primary);"></i>
-                        <span>Tetapan Rakaman Fleksibel</span>
-                        <span id="rec-summary-pill" style="font-size: 0.75rem; color: var(--primary); background: #eeebff; padding: 0.1rem 0.5rem; border-radius: 999px;">
-                            Detik: 3s &bull; Statik: 30 &bull; Gerakan: 30f
-                        </span>
-                        <i class="fa-solid fa-chevron-down" id="rec-settings-chevron" style="font-size: 0.75rem; color: var(--text-muted);"></i>
-                    </button>
-
-                    <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--text-muted);">
-                        <span>Pintasan:</span>
-                        <span id="kbd-static-1"><kbd class="kbd-tag">Space</kbd> 1x Statik</span>
-                        <span id="kbd-static-burst"><kbd class="kbd-tag">B</kbd> Burst Statik</span>
-                        <span id="kbd-dynamic-seq" style="display: none;"><kbd class="kbd-tag">Space</kbd> / <kbd class="kbd-tag">G</kbd> Rakam Gerakan</span>
-                        <span><kbd class="kbd-tag">T</kbd> Uji</span>
-                    </div>
-                </div>
-
-                <div id="rec-settings-panel" style="display: none;">
-                    <div class="rec-settings-grid">
-                        <div class="rec-field">
-                            <label for="cfg-countdown">Kiraan Detik (Countdown)</label>
-                            <select id="cfg-countdown">
-                                <option value="0">0 saat (Terus Rakam)</option>
-                                <option value="1">1 saat (Pantas)</option>
-                                <option value="3" selected>3 saat (Standard)</option>
-                                <option value="5">5 saat (Jarak Jauh)</option>
+                    <form method="POST" action="{{ route('admin.ai.import') }}" enctype="multipart/form-data" id="import-form">
+                        @csrf
+                        <input type="file" name="dataset" id="import-file" accept=".csv,text/csv" class="form-input" required style="margin-bottom: 0.55rem; padding: 0.42rem; font-size: 0.8rem;">
+                        <div style="display: flex; gap: 0.45rem; flex-wrap: wrap;">
+                            <select name="mode" id="import-mode" class="form-select" style="flex: 1; min-width: 140px; padding: 0.4rem 0.6rem; font-size: 0.8rem;">
+                                <option value="append">Tambah kepada data sedia ada</option>
+                                <option value="replace">Ganti label yang sama</option>
                             </select>
+                            <button type="submit" class="btn btn-secondary btn-sm" id="btn-import">Import</button>
                         </div>
-                        <div class="rec-field" id="field-burst-count">
-                            <label for="cfg-burst-count">Bil. Sampel Statik (Burst)</label>
-                            <input type="number" id="cfg-burst-count" min="5" max="200" step="5" value="30">
-                        </div>
-                        <div class="rec-field" id="field-seq-mode" style="display: none;">
-                            <label for="cfg-seq-mode">Mod Rakaman Gerakan</label>
-                            <select id="cfg-seq-mode">
-                                <option value="auto" selected>Auto Mula–Gerak–Tamat</option>
-                                <option value="manual">Bilangan Frame Tetap (Manual)</option>
-                            </select>
-                        </div>
-                        <div class="rec-field" id="field-seq-frames" style="display: none;">
-                            <label for="cfg-seq-frames">Had Frame Klip (DTW)</label>
-                            <input type="number" id="cfg-seq-frames" min="10" max="90" step="5" value="30">
-                        </div>
-                        <div class="rec-field" id="field-burst-interval">
-                            <label for="cfg-burst-interval">Selang Statik (Kelajuan)</label>
-                            <select id="cfg-burst-interval">
-                                <option value="50">50ms (Sangat Pantas)</option>
-                                <option value="100" selected>100ms (Normal)</option>
-                                <option value="180">180ms (Lebih Variasi)</option>
-                            </select>
-                        </div>
-                        <div class="rec-field">
-                            <label for="cfg-confidence">Sensitiviti Tangan: <span id="cfg-conf-val">55%</span></label>
-                            <input type="range" id="cfg-confidence" min="30" max="85" step="5" value="55" style="width: 100%; accent-color: var(--primary); margin-top: 0.35rem;">
-                        </div>
-                    </div>
+                    </form>
                 </div>
-            </div>
+            </details>
 
-            {{-- 5. RECORDING & LIVE ACTION BUTTONS --}}
-            <div class="studio-btn-row">
-                <button type="button" class="btn btn-primary" id="btn-record-one" disabled>
-                    <i class="fa-solid fa-record-vinyl"></i> Rakam 1 Sampel Statik
-                </button>
-                <button type="button" class="btn btn-accent" id="btn-record-burst" disabled>
-                    <i class="fa-solid fa-burst"></i> <span id="lbl-record-burst">Rakam Statik (30)</span>
-                </button>
-                <button type="button" class="btn btn-secondary" id="btn-record-sequence" disabled style="display: none; background: linear-gradient(135deg, #0284c7, #6c5ce7); color: #fff;">
-                    <i class="fa-solid fa-film"></i> <span id="lbl-record-seq">Rakam Auto Mula–Gerak–Tamat</span>
-                </button>
-                <button type="button" class="btn btn-danger" id="btn-cancel-record" style="display: none;">
-                    <i class="fa-solid fa-xmark"></i> Batal Rakaman
-                </button>
-                <button type="button" class="btn btn-outline" id="btn-stop-camera" style="display: none;">
-                    <i class="fa-solid fa-stop"></i> Tutup Kamera
-                </button>
-            </div>
-
-            <div class="burst-track" id="burst-progress"><div class="burst-fill" id="burst-fill"></div></div>
-            <div class="studio-msg" id="record-status">Sedia untuk merakam data.</div>
-        </div>
-
-        {{-- LIVE MODEL TESTER CARD --}}
-        <div class="card" style="padding: 1.25rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
-                <div>
-                    <h3 style="font-size: 1.15rem; margin: 0;" id="live-tester-title">
-                        <i class="fa-solid fa-flask" style="color: #6c5ce7;"></i> Uji Kamera Statik (KNN Sahaja)
-                    </h3>
-                    <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.15rem 0 0;" id="live-tester-desc">
-                        Menguji bentuk jari pegun secara terasing tanpa gangguan gerakan DTW.
+            <details class="studio-disclosure">
+                <summary class="danger-summary"><span>&#9656; Urus &amp; padam data pukal</span></summary>
+                <div class="studio-disclosure-body">
+                    <p style="color: var(--text-muted); font-size: 0.78rem; margin: 0 0 0.6rem;">
+                        Tindakan ini akan memadam semua sampel dalam pangkalan data AI.
                     </p>
-                </div>
-                <div style="display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center;">
-                    <div id="live-tester-mode-wrap" style="display: none; gap: 0.25rem; background: #f1f5f9; padding: 0.2rem; border-radius: 8px;">
-                        <button type="button" class="cam-tool-btn active" id="btn-test-mode-open" title="Uji semua templat gerakan serentak">
-                            Open-Set
-                        </button>
-                        <button type="button" class="cam-tool-btn" id="btn-test-mode-target" title="Simulasi penilaian ketat pelajar untuk isyarat sasaran">
-                            Simulasi Pelajar
-                        </button>
-                    </div>
-                    <button type="button" class="cam-tool-btn" id="btn-reload-model" title="Muat semula dataset AI terkini">
-                        <i class="fa-solid fa-rotate"></i> Segar Semula Model
-                    </button>
-                    <button type="button" class="btn btn-outline btn-sm" id="btn-toggle-test" disabled>
-                        <i class="fa-solid fa-play"></i> Mula Uji
+                    <button type="button" class="btn btn-danger btn-sm" id="btn-clear-all" @if(!$totalSamples) style="display:none" @endif style="width: 100%;">
+                        <i class="fa-solid fa-trash"></i> Padam semua sampel
                     </button>
                 </div>
-            </div>
-
-            <div class="test-result">
-                <div class="test-label" id="test-label">—</div>
-                <div style="flex: 1;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 800; color: var(--text-muted); margin-bottom: 0.3rem;">
-                        <span>Keyakinan Pengecaman</span><span id="test-conf">0%</span>
-                    </div>
-                    <div class="test-bar"><div id="test-bar"></div></div>
-                    <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem;" id="test-info">Model belum dimuatkan.</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- ================= RIGHT / SIDE: DATASET STATS, LIST & CSV IMPORT ================= --}}
-    <div class="studio-side-col">
-
-        {{-- TOTAL SAMPLES SUMMARY CARD --}}
-        <div class="card" style="padding: 1.35rem; margin-bottom: 1.25rem; background: linear-gradient(135deg, #6c5ce7 0%, #5041c9 100%); color: #fff;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px;">Ringkasan Dataset Pangkalan Data</span>
-                <i class="fa-solid fa-database" style="opacity: 0.75;"></i>
-            </div>
-            <div style="display: flex; gap: 1.25rem; align-items: baseline; margin: 0.45rem 0; flex-wrap: wrap;">
-                <div style="font-size: 2.6rem; font-weight: 900; color: #ffeaa7; font-family: var(--font-display); line-height: 1;" id="stat-total-samples">
-                    {{ $totalSamples }}
-                </div>
-                <div style="font-size: 0.82rem; line-height: 1.5;">
-                    <div><span id="stat-total-static" style="font-weight: 800; color: #55efc4;">{{ $totalStatic }}</span> sampel statik (KNN)</div>
-                    <div><span id="stat-total-seq" style="font-weight: 800; color: #ffeaa7;">{{ $totalSequence }}</span> klip gerakan (DTW)</div>
-                </div>
-            </div>
-            <div style="font-size: 0.76rem; opacity: 0.9;">
-                Klik mana-mana baris isyarat di bawah untuk terus menjadikannya sasaran rakaman kamera.
-            </div>
-        </div>
-
-        {{-- SAMPLES PER SIGN INTERACTIVE LIST --}}
-        <div class="card" style="padding: 1.35rem; margin-bottom: 1.25rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; gap: 0.5rem; flex-wrap: wrap;">
-                <h3 style="font-size: 1.15rem; margin: 0;">Senarai Sampel Isyarat</h3>
-                <button type="button" class="btn btn-danger btn-sm" id="btn-clear-all" @if(!$totalSamples) style="display:none" @endif>
-                    <i class="fa-solid fa-trash"></i> Padam Semua
-                </button>
-            </div>
-
-            {{-- Filter & Search inside Dataset List --}}
-            <div style="display: flex; gap: 0.45rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
-                <input type="text"
-                       id="sample-filter-input"
-                       class="form-input"
-                       placeholder="Tapis label sampel..."
-                       style="flex: 1; min-width: 130px; padding: 0.38rem 0.7rem; font-size: 0.82rem;">
-                <div class="seg-group">
-                    <button type="button" class="seg-btn active" data-list-filter="all">Semua</button>
-                    <button type="button" class="seg-btn" data-list-filter="low">&lt;50</button>
-                    <button type="button" class="seg-btn" data-list-filter="seq">DTW</button>
-                </div>
-            </div>
-
-            <div id="sample-list-msg" style="display: none; padding: 0.55rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 800; margin-bottom: 0.75rem;"></div>
-            <div style="max-height: 410px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.38rem; padding-right: 0.2rem;" id="sample-list"></div>
-
-            <p style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.75rem;">
-                <i class="fa-solid fa-lightbulb" style="color: #f39c12;"></i> Sasarkan <strong>50+ sampel statik</strong> atau <strong>5+ klip DTW</strong> setiap isyarat daripada pelbagai sudut.
-            </p>
-        </div>
-
-        {{-- IMPORT CSV CARD --}}
-        <div class="card" style="padding: 1.35rem;">
-            <h3 style="font-size: 1.1rem; margin-bottom: 0.4rem;">
-                <i class="fa-solid fa-file-import" style="color: #00b894;"></i> Import Dataset CSV
-            </h3>
-            <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.75rem;">
-                Menyokong kolum <code>label, lm0_x … lm20_z</code> atau <code>label, x0 … z20</code>.
-            </p>
-            <form method="POST" action="{{ route('admin.ai.import') }}" enctype="multipart/form-data" id="import-form">
-                @csrf
-                <input type="file" name="dataset" id="import-file" accept=".csv,text/csv" class="form-input" required style="margin-bottom: 0.6rem; padding: 0.5rem; font-size: 0.85rem;">
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <select name="mode" id="import-mode" class="form-select" style="flex: 1; min-width: 150px; padding: 0.45rem 0.7rem; font-size: 0.85rem;">
-                        <option value="append">Tambah kepada data sedia ada</option>
-                        <option value="replace">Ganti label yang sama</option>
-                    </select>
-                    <button type="submit" class="btn btn-secondary btn-sm" id="btn-import">
-                        <i class="fa-solid fa-upload"></i> Import
-                    </button>
-                </div>
-            </form>
-        </div>
-
-    </div>
-
-</div>
-
-{{-- CUSTOM DELETE CONFIRMATION MODAL --}}
-<div id="delete-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem;">
-    <div style="max-width: 420px; width: 100%; background: #fff; padding: 1.8rem; text-align: center; border-radius: var(--radius-lg); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
-        <div style="width: 56px; height: 56px; background: #fee2e2; color: #dc2626; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; margin: 0 auto 1rem;">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-        </div>
-        <h3 id="delete-modal-title" style="margin: 0 0 0.5rem; font-size: 1.3rem;">Sahkan Pemadaman</h3>
-        <p id="delete-modal-desc" style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1.5rem; line-height: 1.5;">Adakah anda pasti mahu memadam sampel ini?</p>
-        <div style="display: flex; gap: 0.8rem; justify-content: center;">
-            <button type="button" class="btn btn-outline" id="btn-cancel-delete" style="flex: 1; justify-content: center;">Batal</button>
-            <button type="button" class="btn btn-danger" id="btn-confirm-delete" style="flex: 1; background: #dc2626; color: #fff; justify-content: center;">
-                <i class="fa-solid fa-trash-can"></i> Ya, Padam
-            </button>
+            </details>
         </div>
     </div>
 </div>
+
+{{-- NATIVE MODAL DIALOG: DELETE CONFIRMATION --}}
+<dialog id="delete-modal" class="adm-dialog" closedby="any" aria-labelledby="delete-modal-title" style="max-width: 400px; text-align: center;">
+    <h2 id="delete-modal-title" style="margin: 0 0 8px; font-size: 1.05rem;">Sahkan pemadaman</h2>
+    <p id="delete-modal-desc" style="color: var(--adm-text-muted); font-size: 0.875rem; margin: 0 0 20px; line-height: 1.5;">Adakah anda pasti mahu memadam sampel ini?</p>
+    <div style="display: flex; gap: 8px; justify-content: center;">
+        <form method="dialog" style="flex: 1; display: flex;">
+            <button type="submit" class="btn btn-outline btn-sm" id="btn-cancel-delete" style="width: 100%; justify-content: center;" autofocus>Batal</button>
+        </form>
+        <button type="button" class="btn btn-danger btn-sm" id="btn-confirm-delete" style="flex: 1; background: var(--adm-neg); color: #fff; border-color: var(--adm-neg); justify-content: center;">
+            Ya, padam
+        </button>
+    </div>
+</dialog>
 
 @push('scripts')
 <script type="module">
@@ -1109,7 +954,8 @@
         PredictionSmoother,
         HandMotionTracker,
         MotionSegmenter,
-        DynamicGestureEngine
+        DynamicGestureEngine,
+        StepSequenceClassifier
     } from "{{ asset('js/gesture-ai.js') }}";
 
     const ROUTES = {
@@ -1170,8 +1016,11 @@
     const motionTracker = new HandMotionTracker(45);
     const segmenter = new MotionSegmenter();
     const dynamicEngine = new DynamicGestureEngine({ audience: "studio" });
+    const stepClassifier = new StepSequenceClassifier();
     let counts = @json((object) $sampleCounts);
     let sequenceCounts = @json((object) $sequenceCounts);
+    let stepCounts = @json((object) ($stepCounts ?? []));
+    let draftSteps = [];
 
     // Map of label -> boolean isStatic from curriculum chips
     const signStaticMap = {};
@@ -1221,73 +1070,88 @@
             setMsg("Batalkan rakaman aktif dahulu sebelum menukar mod kamera.", "err");
             return;
         }
-        studioCameraMode = mode === "dynamic" ? "dynamic" : "static";
+        studioCameraMode = (mode === "dynamic" || mode === "steps") ? mode : "static";
+        const isStatic = studioCameraMode === "static";
         const isDyn = studioCameraMode === "dynamic";
+        const isSteps = studioCameraMode === "steps";
+        const isMultiHand = isDyn || isSteps;
 
-        $("btn-cam-mode-static")?.classList.toggle("active-static", !isDyn);
-        $("btn-cam-mode-dynamic")?.classList.toggle("active-dynamic", isDyn);
+        $("btn-cam-mode-static")?.setAttribute("aria-selected", String(isStatic));
+        $("btn-cam-mode-dynamic")?.setAttribute("aria-selected", String(isDyn));
+        $("btn-cam-mode-steps")?.setAttribute("aria-selected", String(isSteps));
 
         // Toggle Recording Buttons & Settings Fields per Camera Mode
-        $("btn-record-one").style.display = isDyn ? "none" : "";
-        $("btn-record-burst").style.display = isDyn ? "none" : "";
+        if ($("classic-record-row")) $("classic-record-row").style.display = isSteps ? "none" : "";
+        $("btn-record-one").style.display = isStatic ? "" : "none";
+        $("btn-record-burst").style.display = isStatic ? "" : "none";
         $("btn-record-sequence").style.display = isDyn ? "" : "none";
+        if ($("steps-recorder-panel")) $("steps-recorder-panel").style.display = isSteps ? "block" : "none";
 
-        $("field-burst-count").style.display = isDyn ? "none" : "";
-        $("field-burst-interval").style.display = isDyn ? "none" : "";
+        $("field-burst-count").style.display = isStatic ? "" : "none";
+        $("field-burst-interval").style.display = isStatic ? "" : "none";
         $("field-seq-mode").style.display = isDyn ? "" : "none";
         $("field-seq-frames").style.display = isDyn ? "" : "none";
 
-        $("kbd-static-1").style.display = isDyn ? "none" : "";
-        $("kbd-static-burst").style.display = isDyn ? "none" : "";
+        $("kbd-static-1").style.display = isStatic ? "" : "none";
+        $("kbd-static-burst").style.display = isStatic ? "" : "none";
         $("kbd-dynamic-seq").style.display = isDyn ? "" : "none";
 
-        // Auto-configure two-hand + Pose tracking in Dynamic mode
-        numHands = isDyn ? 2 : 1;
+        // Auto-configure two-hand + Pose tracking in Dynamic & Steps modes
+        numHands = isMultiHand ? 2 : 1;
         if ($("hands-label")) $("hands-label").textContent = `${numHands} Tangan`;
         $("btn-toggle-hands")?.classList.toggle("active", numHands === 2);
         if (handLandmarker) {
             handLandmarker.setOptions({ numHands }).catch(e => console.warn(e));
         }
-        if (isDyn && running && !poseLandmarker) {
+        if (isMultiHand && running && !poseLandmarker) {
             initPoseModel();
         }
 
         // Update HUD Pills & Live Tester Header
         const hudMode = $("hud-cam-mode");
         if (hudMode) {
-            hudMode.textContent = isDyn ? "🎬 Mod Dinamik (2 Tangan + Bahu)" : "🖐️ Mod Statik (KNN)";
-            hudMode.style.background = isDyn ? "rgba(2, 132, 199, 0.92)" : "rgba(108, 92, 231, 0.92)";
+            hudMode.textContent = isSteps
+                ? "Mod Urutan Langkah (2–6 Pose)"
+                : (isDyn ? "Mod Dinamik (2 Tangan + Bahu)" : "Mod Statik (KNN)");
+            hudMode.style.background = isSteps
+                ? "rgba(5, 150, 105, 0.92)"
+                : (isDyn ? "rgba(2, 132, 199, 0.92)" : "rgba(22, 50, 79, 0.92)");
         }
         const hudDtw = $("hud-dtw-buffer");
         if (hudDtw) {
-            hudDtw.style.display = isDyn ? "" : "none";
+            hudDtw.style.display = isMultiHand ? "" : "none";
         }
         const testerModeWrap = $("live-tester-mode-wrap");
         if (testerModeWrap) {
-            testerModeWrap.style.display = isDyn ? "inline-flex" : "none";
+            testerModeWrap.style.display = isMultiHand ? "inline-flex" : "none";
         }
 
         const testerTitle = $("live-tester-title");
         const testerDesc = $("live-tester-desc");
         if (testerTitle) {
-            testerTitle.innerHTML = isDyn
-                ? '<i class="fa-solid fa-film" style="color: #0284c7;"></i> Uji Kamera Dinamik (Auto Gerakan + Bahu + 2 Tangan)'
-                : '<i class="fa-solid fa-hand" style="color: #6c5ce7;"></i> Uji Kamera Statik (KNN Pegun Sahaja)';
+            testerTitle.innerHTML = isSteps
+                ? '<i class="fa-solid fa-list-ol" style="color: var(--success);"></i> Uji Urutan Langkah (Step-by-Step)'
+                : (isDyn
+                    ? '<i class="fa-solid fa-film" style="color: var(--secondary-dark);"></i> Uji Kamera Dinamik (Auto Gerakan + Bahu + 2 Tangan)'
+                    : '<i class="fa-solid fa-hand" style="color: var(--primary);"></i> Uji Kamera Statik (KNN Pegun Sahaja)');
         }
         if (testerDesc) {
-            testerDesc.textContent = isDyn
-                ? (liveTestMode === "open-set"
-                    ? "Mod Open-Set: Mengesan semua templat DTW & J/Z sebaik sahaja gerakan tamat."
-                    : "Simulasi Pelajar (Target-Locked): Menguji isyarat sasaran mengikut peraturan ketat murid & Mod Cermin.")
-                : "Menguji bentuk jari pegun (KNN) secara terasing tanpa gangguan gerakan DTW.";
+            testerDesc.textContent = isSteps
+                ? "Menguji pose mengikut turutan Langkah 1 → Langkah 2 → … secara masa nyata."
+                : (isDyn
+                    ? (liveTestMode === "open-set"
+                        ? "Mod Open-Set: Mengesan semua templat DTW & J/Z sebaik sahaja gerakan tamat."
+                        : "Simulasi Pelajar (Target-Locked): Menguji isyarat sasaran mengikut peraturan ketat murid & Mod Cermin.")
+                    : "Menguji bentuk jari pegun (KNN) secara terasing tanpa gangguan gerakan DTW.");
         }
 
         const newSignType = $("new-sign-type");
-        if (newSignType) newSignType.value = isDyn ? "0" : "1";
+        if (newSignType) newSignType.value = isMultiHand ? "0" : "1";
 
         // Reset buffers so switching modes starts fresh
         motionTracker.reset();
         segmenter.reset();
+        stepClassifier.reset();
         smoother.reset();
         lastPrimaryWrist = null;
         prevPrimaryWristForVec = null;
@@ -1325,10 +1189,19 @@
         el.className = "studio-msg" + (type ? " " + type : "");
     }
 
+    function setStudioLoading(active, label = "LOADING...") {
+        const bar = $("studio-loading-bar");
+        if (!bar) return;
+        const lbl = $("studio-loading-label");
+        if (lbl && label) lbl.textContent = label;
+        bar.style.display = active ? "inline-flex" : "none";
+    }
+
     function setRecordButtons(enabled) {
         $("btn-record-one").disabled = !enabled;
         $("btn-record-burst").disabled = !enabled;
         $("btn-record-sequence").disabled = !enabled;
+        if ($("btn-capture-step")) $("btn-capture-step").disabled = !enabled || draftSteps.length >= 6;
     }
 
     function escapeHtml(s) {
@@ -1360,22 +1233,27 @@
             const badge = chip.querySelector("[data-chip-count]");
             if (badge) {
                 const isStaticChip = chip.dataset.static !== "0";
-                badge.textContent = isStaticChip ? (counts[lbl] || 0) : (sequenceCounts[lbl] || 0);
+                badge.textContent = isStaticChip
+                    ? (counts[lbl] || 0)
+                    : (studioCameraMode === "steps" ? (stepCounts[lbl] || 0) : (sequenceCounts[lbl] || 0));
             }
         });
     }
 
-    function renderCounts(newCounts, total, newSeqCounts = null) {
+    function renderCounts(newCounts, total, newSeqCounts = null, newStepCounts = null) {
         if (newCounts) counts = newCounts;
         if (newSeqCounts) sequenceCounts = newSeqCounts;
+        if (newStepCounts) stepCounts = newStepCounts;
 
         const sumStatic = Object.values(counts).reduce((a, b) => a + Number(b), 0);
         const sumSeq = Object.values(sequenceCounts).reduce((a, b) => a + Number(b), 0);
-        $("stat-total-samples").textContent = total ?? (sumStatic + sumSeq);
+        const sumSteps = Object.values(stepCounts).reduce((a, b) => a + Number(b), 0);
+        $("stat-total-samples").textContent = total ?? (sumStatic + sumSeq + sumSteps);
         $("stat-total-static").textContent = sumStatic;
         $("stat-total-seq").textContent = sumSeq;
+        if ($("stat-total-steps")) $("stat-total-steps").textContent = sumSteps;
 
-        const allLabels = [...new Set([...Object.keys(counts), ...Object.keys(sequenceCounts)])].sort();
+        const allLabels = [...new Set([...Object.keys(counts), ...Object.keys(sequenceCounts), ...Object.keys(stepCounts)])].sort();
         $("btn-clear-all").style.display = allLabels.length ? "" : "none";
 
         const searchQ = ($("sample-filter-input")?.value || "").trim().toUpperCase();
@@ -1385,8 +1263,10 @@
             if (searchQ && !label.includes(searchQ)) return false;
             const staticN = counts[label] || 0;
             const seqN = sequenceCounts[label] || 0;
-            if (listFilterMode === "low") return (staticN + seqN) < MIN_RECOMMENDED && seqN < 5;
+            const stepN = stepCounts[label] || 0;
+            if (listFilterMode === "low") return (staticN + seqN + stepN) < MIN_RECOMMENDED && seqN < 5 && stepN < 1;
             if (listFilterMode === "seq") return seqN > 0;
+            if (listFilterMode === "steps") return stepN > 0;
             return true;
         });
 
@@ -1399,20 +1279,26 @@
             list.innerHTML = filtered.map(label => {
                 const staticN = counts[label] || 0;
                 const seqN = sequenceCounts[label] || 0;
-                const totalN = staticN + seqN;
-                const isLow = totalN < MIN_RECOMMENDED && seqN < 5;
+                const stepN = stepCounts[label] || 0;
+                const totalN = staticN + seqN + stepN;
+                const isLow = totalN < MIN_RECOMMENDED && seqN < 5 && stepN < 1;
                 const isActive = label === active;
                 return `
-                <div class="sample-row ${isLow ? "low" : ""} ${isActive ? "active-target" : ""}" data-select-label="${escapeHtml(label)}" title="Klik untuk pilih ${escapeHtml(label)} sebagai sasaran">
-                    <span style="display:flex; align-items:center; gap:0.45rem;">
-                        <i class="fa-solid ${isActive ? 'fa-circle-dot' : 'fa-hand'}" style="color: ${isActive ? 'var(--primary)' : '#94a3b8'}; font-size: 0.8rem;"></i>
-                        <strong>${escapeHtml(label)}</strong>
+                <div class="sample-row ${isActive ? "active-target" : ""}" data-select-label="${escapeHtml(label)}" title="Pilih ${escapeHtml(label)}">
+                    <span style="display:flex; align-items:center; gap:8px; min-width:0;">
+                        <span style="width:7px; height:7px; border-radius:1px; flex-shrink:0; background:${isLow ? '#94a3b8' : '#059669'};"></span>
+                        <span style="font-family: var(--adm-mono); font-size: 0.9rem; color: var(--adm-ink); overflow: hidden; text-overflow: ellipsis;">${escapeHtml(label)}</span>
                     </span>
-                    <span style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
-                        ${staticN > 0 ? `<span class="role-badge badge-static" style="background: #e0f2fe; color: #0284c7;">${staticN} statik</span>` : ''}
-                        ${seqN > 0 ? `<span class="role-badge" style="background: #fef3c7; color: #d97706;"><i class="fa-solid fa-film"></i> ${seqN} DTW</span>` : ''}
-                        <button type="button" class="icon-btn" data-delete-label="${escapeHtml(label)}" title="Padam sampel ${escapeHtml(label)}">
-                            <i class="fa-solid fa-trash-can" style="pointer-events: none;"></i>
+                    <span style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                        <span style="font-family: var(--adm-mono); font-size: 0.74rem; color: var(--adm-text-muted);">
+                            ${[
+                                stepN > 0 ? `${stepN} langkah` : '',
+                                seqN > 0 ? `${seqN} DTW` : '',
+                                staticN > 0 ? `${staticN} statik` : ''
+                            ].filter(Boolean).join(' · ')}
+                        </span>
+                        <button type="button" class="icon-btn" data-delete-label="${escapeHtml(label)}" aria-label="Padam ${escapeHtml(label)}" title="Padam sampel ${escapeHtml(label)}">
+                            &times;
                         </button>
                     </span>
                 </div>`;
@@ -1573,6 +1459,7 @@
         if (initPromise) return initPromise;
 
         initPromise = (async () => {
+            setStudioLoading(true, "LOADING MODEL AI...");
             try {
                 setMsg("Memuatkan model MediaPipe HandLandmarker...");
                 const { mod, fileset } = await getVisionRuntime();
@@ -1609,6 +1496,7 @@
                 return null;
             } finally {
                 initPromise = null;
+                setStudioLoading(false);
             }
         })();
 
@@ -1853,8 +1741,8 @@
                     const moving = !motionTracker.isStill(0.032);
                     const poseTag = latestPoseContext?.hasPose ? "+Bahu" : "";
                     hudDtw.textContent = moving
-                        ? `🎬 Gerak Aktif (${allHandsLandmarks.length}T${poseTag})`
-                        : `🎬 Sedia Auto-Klip (${allHandsLandmarks.length}T${poseTag})`;
+                        ? `Gerak aktif (${allHandsLandmarks.length}T${poseTag})`
+                        : `Sedia auto-klip (${allHandsLandmarks.length}T${poseTag})`;
                 }
 
                 if (showSkeleton) {
@@ -1993,12 +1881,14 @@
             } else {
                 const sN = counts[label] || 0;
                 const qN = sequenceCounts[label] || 0;
-                if (sN > 0 || qN > 0) {
+                const stN = stepCounts[label] || 0;
+                if (sN > 0 || qN > 0 || stN > 0) {
                     const parts = [];
                     if (sN > 0) parts.push(`${sN} statik`);
                     if (qN > 0) parts.push(`${qN} klip DTW`);
+                    if (stN > 0) parts.push(`${stN} urutan langkah`);
                     countEl.textContent = `(${parts.join(", ")})`;
-                    countEl.style.color = "#16a34a";
+                    countEl.style.color = "#059669";
                 } else {
                     countEl.textContent = "(0 sampel — sedia dirakam)";
                     countEl.style.color = "#d97706";
@@ -2079,8 +1969,8 @@
 
     const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-    async function runCountdown() {
-        const seconds = Math.max(0, Number($("cfg-countdown").value || 0));
+    async function runCountdown(overrideSeconds = null) {
+        const seconds = Math.max(0, Number(overrideSeconds ?? ($("cfg-countdown").value || 0)));
         if (seconds <= 0) return;
         const cd = $("studio-countdown");
         cd.style.display = "flex";
@@ -2213,11 +2103,11 @@
                         });
 
                         if (res.event === "started") {
-                            setMsg(`🔴 Merakam gerakan "${label}"... Teruskan isyarat!`);
+                            setMsg(`Merakam gerakan "${label}" — teruskan isyarat`);
                         } else if (res.state === "CAPTURING") {
                             const pct = Math.min(95, Math.round(((res.durationMs || (nowMs - (recSeg.captureStartMs || nowMs))) / maxAutoMs) * 100));
                             fill.style.width = Math.max(15, pct) + "%";
-                            setMsg(`🔴 Merakam "${label}" (${recSeg.clip.length} frame)... Berhenti sekejap untuk tamat.`);
+                            setMsg(`Merakam "${label}" (${recSeg.clip.length} frame) — berhenti sekejap untuk tamat`);
                         } else if (res.event === "too_short") {
                             fill.style.width = "0%";
                             setMsg(`Gerakan terlalu singkat (<8 frame). Cuba ulang isyarat "${label}"!`, "err");
@@ -2293,11 +2183,12 @@
         const confirmBtn = $("btn-confirm-delete");
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Ya, Padam';
-        $("delete-modal").style.display = "flex";
+        $("delete-modal").showModal();
     }
 
     function closeDeleteModal() {
-        $("delete-modal").style.display = "none";
+        const dlg = $("delete-modal");
+        if (dlg.open) dlg.close();
         pendingDeleteBody = null;
     }
 
@@ -2307,7 +2198,7 @@
         el.textContent = text;
         el.style.display = "block";
         el.style.background = type === "success" ? "#dcfce7" : "#fee2e2";
-        el.style.color = type === "success" ? "#16a34a" : "#dc2626";
+        el.style.color = type === "success" ? "#059669" : "#d63031";
         setTimeout(() => { el.style.display = "none"; }, 5000);
     }
 
@@ -2366,13 +2257,20 @@
 
     async function loadClassifier() {
         $("test-info").textContent = "Memuatkan dataset...";
-        const resp = await fetch(ROUTES.dataset, { headers: { Accept: "application/json" } });
-        if (!resp.ok) throw new Error("Gagal memuatkan dataset (" + resp.status + ").");
-        const data = await resp.json();
-        classifier.load(data.samples || []);
-        dynamicEngine.setTemplates(data.sequences || []);
-        classifierStale = false;
-        $("test-info").textContent = `${classifier.size} sampel statik (${classifier.labels.length} label), ${dynamicEngine.size} klip gerakan DTW (${dynamicEngine.templateLabels.join(", ") || "tiada"})`;
+        setStudioLoading(true, "LOADING DATASET...");
+        try {
+            const resp = await fetch(ROUTES.dataset, { headers: { Accept: "application/json" } });
+            if (!resp.ok) throw new Error("Gagal memuatkan dataset (" + resp.status + ").");
+            const data = await resp.json();
+            classifier.load(data.samples || []);
+            dynamicEngine.setTemplates(data.sequences || []);
+            stepClassifier.load(data.steps || []);
+            classifierStale = false;
+            const stepLabelCount = (data.steps || []).length;
+            $("test-info").textContent = `${classifier.size} statik (${classifier.labels.length} label), ${dynamicEngine.size} klip DTW, ${stepLabelCount} urutan langkah`;
+        } finally {
+            setStudioLoading(false);
+        }
     }
 
     async function startTest() {
@@ -2387,7 +2285,9 @@
             lastDynamicTestMatch = { label: null, text: "", pct: "0%", time: 0 };
             testing = true;
             $("hud-live-test").style.display = "flex";
-            $("btn-toggle-test").innerHTML = '<i class="fa-solid fa-stop"></i> Henti Uji';
+            if ($("live-tester-strip")) $("live-tester-strip").style.display = "flex";
+            $("btn-toggle-test").classList.add("active");
+            $("btn-toggle-test").innerHTML = '<i class="fa-solid fa-stop"></i> Henti uji';
         } catch (e) {
             $("test-info").textContent = e.message;
         }
@@ -2397,13 +2297,60 @@
         testing = false;
         segmenter.reset();
         $("hud-live-test").style.display = "none";
-        $("btn-toggle-test").innerHTML = '<i class="fa-solid fa-play"></i> Mula Uji';
+        if ($("live-tester-strip")) $("live-tester-strip").style.display = "none";
+        $("btn-toggle-test").classList.remove("active");
+        $("btn-toggle-test").innerHTML = '<i class="fa-solid fa-play"></i> Uji cuba';
         updateTestDisplay("—", "0%", "0%");
     }
 
     function runTest() {
         const activeFaceCtx = enableFaceAi ? latestFaceContext : null;
         const nowMs = performance.now();
+
+        // =========================================================================
+        // MODE 0: STEP-BY-STEP SEQUENCE TESTER (Urutan Langkah)
+        // =========================================================================
+        if (studioCameraMode === "steps") {
+            const targetLbl = getActiveLabel();
+            const vec146 = latestLandmarks ? captureDynamicFeatureVector(liveTestMode === "target-locked" ? targetLbl : null) : null;
+            const res = stepClassifier.update(vec146, {
+                targetLabel: targetLbl,
+                mode: liveTestMode,
+                nowMs,
+            });
+            const hudDtw = $("hud-dtw-buffer");
+            if (hudDtw) {
+                hudDtw.textContent = res.totalSteps > 0
+                    ? `Langkah ${Math.min(res.currentStep, res.totalSteps)}/${res.totalSteps}`
+                    : "Tiada templat";
+            }
+            if (res.completed) {
+                const conf = Math.max(60, res.confidence || 85);
+                lastDynamicTestMatch = {
+                    label: res.label,
+                    text: `${conf}% (Selesai ${res.totalSteps}/${res.totalSteps})`,
+                    pct: `${conf}%`,
+                    time: nowMs,
+                };
+                $("test-info").textContent = `Urutan langkah ${res.label} lengkap (${res.stepNames.join(" -> ")})`;
+                updateTestDisplay(lastDynamicTestMatch.label, lastDynamicTestMatch.text, lastDynamicTestMatch.pct);
+                return;
+            }
+            if (lastDynamicTestMatch.label && (nowMs - lastDynamicTestMatch.time) < 2000) {
+                updateTestDisplay(lastDynamicTestMatch.label, lastDynamicTestMatch.text, lastDynamicTestMatch.pct);
+                return;
+            }
+            if (res.status === "no_templates") {
+                updateTestDisplay("—", "Belum ada urutan langkah dirakam", "0%");
+                return;
+            }
+            const nextName = res.stepNames[res.currentStep] || `Langkah ${res.currentStep + 1}`;
+            const pills = res.stepNames.map((n, i) => (i < res.currentStep ? `${n} ✓` : (i === res.currentStep ? `[${n}]` : n))).join(" → ");
+            const pct = res.totalSteps > 0 ? `${Math.round((res.currentStep / res.totalSteps) * 100)}%` : "0%";
+            $("test-info").textContent = `Kemajuan: ${pills}`;
+            updateTestDisplay(`${res.currentStep}/${res.totalSteps}`, `Seterusnya: ${nextName} (${res.confidence}%)`, pct);
+            return;
+        }
 
         // =========================================================================
         // MODE A: DYNAMIC CAMERA TESTER (Auto Mula–Gerak–Tamat Dual-Mode Engine)
@@ -2421,17 +2368,17 @@
             const hudDtw = $("hud-dtw-buffer");
             if (hudDtw) {
                 hudDtw.textContent = segRes.state === "CAPTURING"
-                    ? `🔴 Rakam Uji (${segmenter.clip.length}f)`
-                    : (liveTestMode === "open-set" ? "🎬 Uji: Open-Set" : `🎬 Simulasi: ${getActiveLabel() || "?"}`);
+                    ? `Rakam (${segmenter.clip.length}f)`
+                    : (liveTestMode === "open-set" ? "Uji: Open-Set" : `Simulasi: ${getActiveLabel() || "?"}`);
             }
 
             if (segRes.event === "started") {
-                updateTestDisplay("🔴", "Mengesan gerakan (berhenti sekejap untuk nilai)...", "40%");
+                updateTestDisplay("...", "Mengesan gerakan (berhenti sekejap untuk nilai)", "40%");
                 return;
             }
 
             if (segRes.event === "too_short") {
-                lastDynamicTestMatch = { label: "…", text: "Gerakan terlalu singkat (<8f). Ulang semula.", pct: "20%", time: nowMs };
+                lastDynamicTestMatch = { label: "...", text: "Gerakan terlalu singkat (<8f)", pct: "20%", time: nowMs };
                 updateTestDisplay(lastDynamicTestMatch.label, lastDynamicTestMatch.text, lastDynamicTestMatch.pct);
                 return;
             }
@@ -2451,18 +2398,18 @@
                 if (evalRes.matched) {
                     lastDynamicTestMatch = {
                         label: evalRes.label,
-                        text: `${conf}% (${evalRes.source.toUpperCase()} ⭐)`,
+                        text: `${conf}% (${evalRes.source.toUpperCase()})`,
                         pct: `${conf}%`,
                         time: nowMs,
                     };
                 } else if (evalRes.status === "mirror") {
-                    lastDynamicTestMatch = { label: "🪞", text: "Mod Cermin (0 Klip / Tiada Peraturan)", pct: "0%", time: nowMs };
+                    lastDynamicTestMatch = { label: "-", text: "Mod cermin (tiada klip)", pct: "0%", time: nowMs };
                 } else if (evalRes.status === "need_face") {
-                    lastDynamicTestMatch = { label: "👤", text: "AI Wajah / Zon Wajah Diperlukan", pct: "0%", time: nowMs };
+                    lastDynamicTestMatch = { label: "-", text: "AI wajah diperlukan", pct: "0%", time: nowMs };
                 } else {
                     lastDynamicTestMatch = {
-                        label: evalRes.label || "✖",
-                        text: `${conf}% (Tidak Sepadan)`,
+                        label: evalRes.label || "-",
+                        text: `${conf}% (tidak sepadan)`,
                         pct: `${conf}%`,
                         time: nowMs,
                     };
@@ -2473,7 +2420,7 @@
 
             if (segRes.state === "CAPTURING") {
                 const prog = Math.min(75, 35 + Math.round((segRes.durationMs || 0) / 45));
-                updateTestDisplay("🔴", `Merakam gerakan (${segmenter.clip.length}f)... Berhenti sekejap untuk nilai`, `${prog}%`);
+                updateTestDisplay("...", `Merakam gerakan (${segmenter.clip.length}f)`, `${prog}%`);
                 return;
             }
 
@@ -2508,7 +2455,7 @@
         }
 
         if (isPinkyUpShape(latestLandmarks) && classifier.labels.includes("I")) {
-            updateTestDisplay("I", "95% (Isyarat I Pegun 🖐️)", "95%");
+            updateTestDisplay("I", "95% (Isyarat I pegun)", "95%");
             smoother.push("I");
             return;
         }
@@ -2519,7 +2466,7 @@
         const faceBoost = (stable && !isHandOnlyLabel(stable) && activeFaceCtx?.hasFace)
             ? evaluateFaceSignBoost(stable, activeFaceCtx)
             : { bonus: 0 };
-        const faceBadge = (usedFace || faceBoost.bonus !== 0) ? " + Wajah 👤" : " (Statik 🖐️)";
+        const faceBadge = (usedFace || faceBoost.bonus !== 0) ? " + wajah" : " (statik)";
         updateTestDisplay(stable ?? "?", confidence + "%" + faceBadge, confidence + "%");
     }
 
@@ -2663,19 +2610,123 @@
         try { await loadClassifier(); } catch (e) { $("test-info").textContent = e.message; }
     });
     $("btn-clear-all").addEventListener("click", window.confirmDeleteAll);
-    $("btn-cancel-delete").addEventListener("click", closeDeleteModal);
     $("btn-confirm-delete").addEventListener("click", executeDelete);
-    $("delete-modal").addEventListener("click", e => {
-        if (e.target === $("delete-modal")) closeDeleteModal();
-    });
+    $("delete-modal").addEventListener("close", () => { pendingDeleteBody = null; });
 
     // Prev / Next Sign Steppers
     $("btn-prev-sign").addEventListener("click", () => stepSign(-1));
     $("btn-next-sign").addEventListener("click", () => stepSign(1));
 
-    // Dedicated Static vs Dynamic Camera Mode Switcher
+    // Dedicated Static vs Dynamic vs Urutan Langkah Camera Mode Switcher
     $("btn-cam-mode-static")?.addEventListener("click", () => setStudioCameraMode("static"));
     $("btn-cam-mode-dynamic")?.addEventListener("click", () => setStudioCameraMode("dynamic"));
+    $("btn-cam-mode-steps")?.addEventListener("click", () => setStudioCameraMode("steps"));
+
+    // Step-by-Step Recorder Logic (2..6 steps)
+    function renderDraftSteps() {
+        const list = $("steps-draft-list");
+        if (!list) return;
+        if (!draftSteps.length) {
+            list.innerHTML = '<span style="font-size: 0.82rem; color: var(--text-muted);">Belum ada langkah ditangkap. Tekan "Tangkap Langkah" atau Space.</span>';
+        } else {
+            list.innerHTML = draftSteps.map((st, idx) =>
+                `<span class="step-pill"><span class="step-pill-num">${idx + 1}.</span> ${escapeHtml(st.name)} <i class="fa-solid fa-check" style="font-size:0.7rem;"></i></span>`
+            ).join('<span style="color:#94a3b8; font-weight:700;">→</span>');
+        }
+        if ($("lbl-next-step-num")) $("lbl-next-step-num").textContent = Math.min(6, draftSteps.length + 1);
+        if ($("btn-capture-step")) $("btn-capture-step").disabled = !running || busy || draftSteps.length >= 6;
+        if ($("btn-undo-step")) $("btn-undo-step").disabled = busy || draftSteps.length === 0;
+        if ($("btn-reset-steps")) $("btn-reset-steps").disabled = busy || draftSteps.length === 0;
+        if ($("btn-save-steps")) $("btn-save-steps").disabled = busy || draftSteps.length < 2;
+    }
+
+    async function captureOneStep() {
+        if (busy || !running) return;
+        if (draftSteps.length >= 6) {
+            setMsg("Maksimum 6 langkah bagi setiap urutan.", "err");
+            return;
+        }
+        const label = getActiveLabel();
+        if (!label) {
+            setMsg("Sila pilih isyarat sasaran dahulu.", "err");
+            return;
+        }
+        busy = true;
+        cancelRequested = false;
+        renderDraftSteps();
+        try {
+            if ($("chk-step-countdown")?.checked) {
+                await runCountdown(2);
+            }
+            if (!latestLandmarks) {
+                setMsg("✖ Tiada tangan dikesan dalam kamera. Tunjukkan tangan dan cuba lagi.", "err");
+                return;
+            }
+            const vec = captureDynamicFeatureVector(label);
+            if (!vec) {
+                setMsg("✖ Gagal mengekstrak ciri tangan.", "err");
+                return;
+            }
+            const rawName = ($("input-step-name")?.value || "").trim();
+            const stepName = rawName || `Langkah ${draftSteps.length + 1}`;
+            draftSteps.push({ name: stepName, f: vec });
+            if ($("input-step-name")) $("input-step-name").value = "";
+            setMsg(`✔ ${stepName} ditangkap (${draftSteps.length}/6).`, "ok");
+        } catch (e) {
+            setMsg("✖ " + e.message, "err");
+        } finally {
+            const cd = $("studio-countdown");
+            if (cd) cd.style.display = "none";
+            busy = false;
+            renderDraftSteps();
+        }
+    }
+
+    async function saveDraftSteps() {
+        if (busy || draftSteps.length < 2) return;
+        const label = getActiveLabel();
+        if (!label) {
+            setMsg("Sila pilih isyarat sasaran dahulu.", "err");
+            return;
+        }
+        busy = true;
+        renderDraftSteps();
+        try {
+            const data = await postJson(ROUTES.store, {
+                sample_type: "steps",
+                label,
+                steps: draftSteps,
+            });
+            draftSteps = [];
+            classifierStale = true;
+            renderCounts(data.counts, data.total_all, data.sequence_counts, data.step_counts);
+            await loadClassifier();
+            setMsg(`✔ Urutan langkah untuk ${label} (${data.steps_count} langkah) berjaya disimpan!`, "ok");
+        } catch (e) {
+            setMsg("✖ Gagal simpan urutan langkah: " + e.message, "err");
+        } finally {
+            busy = false;
+            renderDraftSteps();
+        }
+    }
+
+    $("btn-capture-step")?.addEventListener("click", captureOneStep);
+    $("btn-undo-step")?.addEventListener("click", () => { draftSteps.pop(); renderDraftSteps(); });
+    $("btn-reset-steps")?.addEventListener("click", () => { draftSteps = []; renderDraftSteps(); });
+    $("btn-save-steps")?.addEventListener("click", saveDraftSteps);
+    $("btn-clear-steps")?.addEventListener("click", async () => {
+        const label = getActiveLabel();
+        if (!label || !confirm(`Padam semua sampel Urutan Langkah untuk ${label}? (Klip DTW & Statik tidak akan dipadam.)`)) return;
+        try {
+            const data = await postJson(ROUTES.clear, { label, sample_type: "steps" });
+            classifierStale = true;
+            renderCounts(data.counts, data.total_all, data.sequence_counts, data.step_counts);
+            await loadClassifier();
+            setMsg(`✔ Semua urutan langkah untuk ${label} telah dipadam.`, "ok");
+        } catch (e) {
+            setMsg("✖ Gagal memadam urutan langkah: " + e.message, "err");
+        }
+    });
 
     // Dual-Mode Live Model Tester Switcher (Open-Set vs Simulasi Pelajar)
     function setLiveTestMode(mode) {
@@ -2835,7 +2886,9 @@
 
         if (e.code === "Space" && !busy && document.activeElement?.tagName !== "BUTTON") {
             e.preventDefault();
-            if (studioCameraMode === "dynamic") {
+            if (studioCameraMode === "steps") {
+                captureOneStep();
+            } else if (studioCameraMode === "dynamic") {
                 recordSequence();
             } else {
                 recordOne();
@@ -2858,13 +2911,19 @@
     window.addEventListener("pagehide", stopCamera);
     window.addEventListener("beforeunload", () => stream?.getTracks().forEach(t => t.stop()));
 
+    // Feature-detected Popover polyfill for older browsers (modern-web-guidance)
+    if (!Object.hasOwn(HTMLElement.prototype, "popover")) {
+        import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js").catch(() => {});
+    }
+
     try {
         const savedMode = localStorage.getItem("gs_ai_studio_cam_mode");
-        setStudioCameraMode(savedMode === "dynamic" ? "dynamic" : "static");
+        setStudioCameraMode((savedMode === "dynamic" || savedMode === "steps" || savedMode === "static") ? savedMode : "steps");
     } catch {
-        setStudioCameraMode("static");
+        setStudioCameraMode("steps");
     }
-    renderCounts(counts, {{ $totalSamples }}, sequenceCounts);
+    renderDraftSteps();
+    renderCounts(counts, {{ $totalSamples }}, sequenceCounts, stepCounts);
     updateActiveSignInfo(true);
 </script>
 @endpush

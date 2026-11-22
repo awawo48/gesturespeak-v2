@@ -2210,3 +2210,293 @@ export class DynamicGestureEngine {
         };
     }
 }
+
+// =============================================================================
+// STEP-BY-STEP KEYFRAME SEQUENCE RECOGNIZER (sample_type = 'steps')
+// =============================================================================
+
+function stepFrameDistanceOriented(a, b, mirror, geomA, geomB, geom2A, geom2B) {
+    const bothFace = a.length >= 78 && b.length >= 78 && a[77] > 0.55 && b[77] > 0.55;
+    let d = multimodalSqDist(a, b, mirror, bothFace, geomA, geomB);
+
+    // Include body/shoulder/camera spatial offset (63..66) when face isn't active on both frames,
+    // so identical handshapes at different positions (e.g. chin vs forward) stay distinct.
+    if (!bothFace && a.length >= 78 && b.length >= 78 && a[77] >= 0.45 && b[77] >= 0.45) {
+        let posD = 0;
+        for (let j = 63; j < 67; j++) {
+            const av = (mirror && (j === 63 || j === 65)) ? -a[j] : a[j];
+            const diff = av - b[j];
+            posD += diff * diff;
+        }
+        d += posD * 0.85;
+    }
+
+    if (a.length >= 145 && b.length >= 145) {
+        const aH2 = a[141] > 0.5;
+        const bH2 = b[141] > 0.5;
+        if (aH2 !== bH2) {
+            d += 0.95;
+        } else if (aH2 && bH2) {
+            let h2D = 0;
+            for (let i = 0; i < 63; i++) {
+                const av = (mirror && i % 3 === 0) ? -a[78 + i] : a[78 + i];
+                const diff = av - b[78 + i];
+                h2D += diff * diff;
+            }
+            const g2A = geom2A || extractHandGeometry(a, 78);
+            const g2B = geom2B || extractHandGeometry(b, 78);
+            let g2D = 0;
+            for (let k = 0; k < 15; k++) {
+                const gd = g2A[k] - g2B[k];
+                g2D += gd * gd;
+            }
+            const dxA = mirror ? -a[142] : a[142];
+            const relD = (dxA - b[142]) ** 2 + (a[143] - b[143]) ** 2 + (a[144] - b[144]) ** 2;
+            d += (h2D * 0.04 + g2D * 0.35 + relD * 0.65);
+        }
+    }
+
+    return d;
+}
+
+export function stepFrameDistance(frameA, frameB, opts = {}) {
+    if (!frameA || !frameB || frameA.length < 63 || frameB.length < 63) return Infinity;
+    const gA = opts.geomA || extractHandGeometry(frameA);
+    const gB = opts.geomB || extractHandGeometry(frameB);
+    const g2A = opts.geom2A || (frameA.length >= 145 && frameA[141] > 0.5 ? extractHandGeometry(frameA, 78) : null);
+    const g2B = opts.geom2B || (frameB.length >= 145 && frameB[141] > 0.5 ? extractHandGeometry(frameB, 78) : null);
+    return Math.min(
+        stepFrameDistanceOriented(frameA, frameB, false, gA, gB, g2A, g2B),
+        stepFrameDistanceOriented(frameA, frameB, true, gA, gB, g2A, g2B)
+    );
+}
+
+export class StepSequenceClassifier {
+    constructor(opts = {}) {
+        this.matchThreshold = opts.matchThreshold ?? 56;
+        this.holdFrames = opts.holdFrames ?? 3;
+        this.timeoutMs = opts.timeoutMs ?? 5000;
+        this.handLostGraceMs = opts.handLostGraceMs ?? 1200;
+        this.cooldownMs = opts.cooldownMs ?? 700;
+        this.distScale = opts.distScale ?? 1.45;
+        this.templatesByLabel = new Map();
+        this.states = new Map(); // templateKey -> tracker state
+        this.cooldownUntil = 0;
+    }
+
+    load(stepSamples = []) {
+        this.templatesByLabel.clear();
+        this.states.clear();
+        this.cooldownUntil = 0;
+
+        for (let idx = 0; idx < stepSamples.length; idx++) {
+            const raw = stepSamples[idx];
+            if (!raw || !raw.label || !Array.isArray(raw.steps) || raw.steps.length < 2) continue;
+            const label = String(raw.label).trim().toUpperCase();
+            const parsedSteps = raw.steps
+                .filter(st => st && Array.isArray(st.f) && st.f.length >= 63)
+                .map((st, i) => {
+                    const f = Float32Array.from(st.f);
+                    return {
+                        name: String(st.name || `Langkah ${i + 1}`).trim() || `Langkah ${i + 1}`,
+                        f,
+                        geom: extractHandGeometry(f),
+                        geom2: f.length >= 145 && f[141] > 0.5 ? extractHandGeometry(f, 78) : null,
+                    };
+                });
+            if (parsedSteps.length < 2) continue;
+
+            const tpl = { key: `${label}#${idx}`, label, steps: parsedSteps };
+            if (!this.templatesByLabel.has(label)) this.templatesByLabel.set(label, []);
+            this.templatesByLabel.get(label).push(tpl);
+        }
+    }
+
+    hasTemplates(label) {
+        if (!label) return false;
+        const list = this.templatesByLabel.get(String(label).trim().toUpperCase());
+        return Boolean(list && list.length > 0);
+    }
+
+    getStepMeta(label) {
+        if (!label) return null;
+        const list = this.templatesByLabel.get(String(label).trim().toUpperCase());
+        if (!list || list.length === 0) return null;
+        const canonical = list[list.length - 1];
+        return {
+            totalSteps: canonical.steps.length,
+            stepNames: canonical.steps.map(s => s.name),
+        };
+    }
+
+    reset(label = null) {
+        if (!label) {
+            this.states.clear();
+            return;
+        }
+        const norm = String(label).trim().toUpperCase();
+        const list = this.templatesByLabel.get(norm) || [];
+        for (const tpl of list) this.states.delete(tpl.key);
+    }
+
+    _getState(key) {
+        let st = this.states.get(key);
+        if (!st) {
+            st = { currentStep: 0, holdCount: 0, stepScores: [], lastAdvanceTime: 0, handLostSince: 0 };
+            this.states.set(key, st);
+        }
+        return st;
+    }
+
+    _resetState(st) {
+        st.currentStep = 0;
+        st.holdCount = 0;
+        st.stepScores = [];
+        st.lastAdvanceTime = 0;
+        st.handLostSince = 0;
+    }
+
+    _scoreDistance(dist) {
+        if (!Number.isFinite(dist)) return 0;
+        return Math.round(clamp(1 - Math.sqrt(Math.max(0, dist)) / this.distScale, 0, 1) * 99);
+    }
+
+    update(features, { targetLabel = null, mode = "target-locked", nowMs = Date.now() } = {}) {
+        const normTarget = targetLabel ? String(targetLabel).trim().toUpperCase() : null;
+        const templates = mode === "open-set"
+            ? [...this.templatesByLabel.values()].flat()
+            : (normTarget ? (this.templatesByLabel.get(normTarget) || []) : []);
+
+        if (templates.length === 0) {
+            return {
+                matched: false, completed: false, label: null, confidence: 0,
+                currentStep: 0, totalSteps: 0, stepNames: [], status: "no_templates",
+            };
+        }
+
+        if (nowMs < this.cooldownUntil) {
+            const meta = this.getStepMeta(normTarget || templates[0].label);
+            return {
+                matched: false, completed: false, label: null, confidence: 0,
+                currentStep: 0, totalSteps: meta.totalSteps, stepNames: meta.stepNames, status: "cooldown",
+            };
+        }
+
+        const hasFrame = Array.isArray(features) || ArrayBuffer.isView(features);
+        const queryGeom = hasFrame && features.length >= 63 ? extractHandGeometry(features) : null;
+        const queryGeom2 = hasFrame && features.length >= 145 && features[141] > 0.5 ? extractHandGeometry(features, 78) : null;
+
+        let bestLead = null;
+        let anyTimeoutReset = false;
+        let anyStepAdvanced = null;
+
+        for (const tpl of templates) {
+            const st = this._getState(tpl.key);
+
+            if (!hasFrame || features.length < 63) {
+                if (st.currentStep > 0) {
+                    if (!st.handLostSince) st.handLostSince = nowMs;
+                    if (nowMs - st.handLostSince > this.handLostGraceMs) {
+                        this._resetState(st);
+                    }
+                }
+                st.holdCount = 0;
+                continue;
+            }
+            st.handLostSince = 0;
+
+            if (st.currentStep > 0 && st.lastAdvanceTime > 0 && (nowMs - st.lastAdvanceTime) > this.timeoutMs) {
+                this._resetState(st);
+                anyTimeoutReset = true;
+            }
+
+            const step = tpl.steps[st.currentStep];
+            const dist = stepFrameDistance(features, step.f, {
+                geomA: queryGeom, geomB: step.geom, geom2A: queryGeom2, geom2B: step.geom2,
+            });
+            const conf = this._scoreDistance(dist);
+
+            if (conf >= this.matchThreshold) {
+                st.holdCount += 1;
+                if (st.holdCount >= this.holdFrames) {
+                    st.stepScores.push(conf);
+                    st.currentStep += 1;
+                    st.holdCount = 0;
+                    st.lastAdvanceTime = nowMs;
+
+                    if (st.currentStep >= tpl.steps.length) {
+                        const avgConf = Math.round(
+                            st.stepScores.reduce((acc, v) => acc + v, 0) / st.stepScores.length
+                        );
+                        const stepNames = tpl.steps.map(s => s.name);
+                        const totalSteps = tpl.steps.length;
+                        this.reset(mode === "open-set" ? null : tpl.label);
+                        this.cooldownUntil = nowMs + this.cooldownMs;
+                        return {
+                            matched: true,
+                            completed: true,
+                            label: tpl.label,
+                            confidence: avgConf,
+                            currentStep: totalSteps,
+                            totalSteps,
+                            stepNames,
+                            status: "completed",
+                        };
+                    }
+                    anyStepAdvanced = { tpl, st, conf };
+                }
+            } else {
+                st.holdCount = 0;
+            }
+
+            if (
+                !bestLead ||
+                st.currentStep > bestLead.st.currentStep ||
+                (st.currentStep === bestLead.st.currentStep && conf > bestLead.conf)
+            ) {
+                bestLead = { tpl, st, conf };
+            }
+        }
+
+        if (anyStepAdvanced) {
+            const { tpl, st, conf } = anyStepAdvanced;
+            return {
+                matched: false,
+                completed: false,
+                label: tpl.label,
+                confidence: conf,
+                currentStep: st.currentStep,
+                totalSteps: tpl.steps.length,
+                stepNames: tpl.steps.map(s => s.name),
+                status: "step_advanced",
+            };
+        }
+
+        if (bestLead) {
+            const { tpl, st, conf } = bestLead;
+            return {
+                matched: false,
+                completed: false,
+                label: tpl.label,
+                confidence: conf,
+                currentStep: st.currentStep,
+                totalSteps: tpl.steps.length,
+                stepNames: tpl.steps.map(s => s.name),
+                status: anyTimeoutReset ? "timeout_reset" : (st.currentStep > 0 ? "tracking" : "idle"),
+            };
+        }
+
+        const fallbackTpl = templates[templates.length - 1];
+        const fbState = this._getState(fallbackTpl.key);
+        return {
+            matched: false,
+            completed: false,
+            label: fallbackTpl.label,
+            confidence: 0,
+            currentStep: fbState.currentStep,
+            totalSteps: fallbackTpl.steps.length,
+            stepNames: fallbackTpl.steps.map(s => s.name),
+            status: "idle",
+        };
+    }
+}

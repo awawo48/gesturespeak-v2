@@ -94,7 +94,7 @@ Route::middleware(['auth:web', 'role:parent,teacher', 'approved'])->name('guardi
 // AI Dataset Endpoint (Accessible for student learning & camera recognition)
 Route::get('/ai/dataset', [AiTrainingController::class, 'dataset'])->name('ai.public_dataset');
 
-// Bahasa Melayu TTS Audio Endpoint (ElevenLabs + Disk Cache + Malay Fallback)
+// Bahasa Melayu TTS Audio Endpoint (Google AI Studio Gemini TTS + Disk Cache + Malay Fallback)
 Route::get('/tts', [TtsController::class, 'speak'])->name('tts.speak');
 
 // ==========================================

@@ -25,6 +25,11 @@ class GestureSample extends Model
         return $query->where('sample_type', 'sequence');
     }
 
+    public function scopeSteps($query)
+    {
+        return $query->where('sample_type', 'steps');
+    }
+
     /**
      * Wrist-relative + scale-invariant normalisation (same as train_model.py and
      * public/js/gesture-ai.js). Idempotent: normalising already-normalised data
@@ -116,5 +121,25 @@ class GestureSample extends Model
     public static function normaliseSequence(array $frames): array
     {
         return array_map(fn ($frame) => self::normalise($frame), $frames);
+    }
+
+    /**
+     * Normalise an ordered list of keyframe steps (each: { name?, f: float[63..146] }).
+     *
+     * @param  array<int, array{name?: ?string, f: array<int, float>}>  $steps
+     * @return array<int, array{name: string, f: array<int, float>}>
+     */
+    public static function normaliseSteps(array $steps): array
+    {
+        $out = [];
+        foreach (array_values($steps) as $i => $step) {
+            $name = trim((string) ($step['name'] ?? ''));
+            $out[] = [
+                'name' => $name !== '' ? mb_substr($name, 0, 40) : 'Langkah '.($i + 1),
+                'f' => self::normalise($step['f']),
+            ];
+        }
+
+        return $out;
     }
 }

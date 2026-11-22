@@ -108,7 +108,7 @@
                     {{ $cat->name_en }} &bull; {{ $cat->signs_count }} Isyarat
                 </div>
 
-                <div class="progress-track" style="height: 12px; margin-bottom: var(--space-2);">
+                <div class="progress-track" style="margin-bottom: var(--space-2);">
                     <div class="progress-fill" style="width: {{ $cat->percent }}%; background: {{ $cat->color }};"></div>
                 </div>
 

@@ -141,6 +141,16 @@ a {
     outline: 2px solid Highlight;
     outline-offset: 2px;
   }
+
+  .progress-track {
+    border-color: ButtonText;
+    background-image: none;
+  }
+
+  .progress-fill {
+    background: Highlight;
+    forced-color-adjust: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -511,9 +521,19 @@ h1, h2, h3, h4, .brand-font {
 
 .progress-track {
   width: 100%;
-  height: 14px;
-  background: #edf2f7;
-  border-radius: var(--radius-full);
+  height: 16px;
+  min-height: 14px;
+  padding: 2px;
+  background-color: #edf2f7;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(22, 50, 79, 0.09) 0 8px,
+    transparent 8px 11px
+  );
+  background-origin: content-box;
+  background-clip: content-box;
+  border: 2px solid rgba(22, 50, 79, 0.2);
+  border-radius: 4px;
   overflow: hidden;
   position: relative;
 }
@@ -521,8 +541,11 @@ h1, h2, h3, h4, .brand-font {
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--secondary) 0%, var(--primary) 100%);
-  border-radius: var(--radius-full);
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 1px;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), inset 0 -2px 0 rgba(15, 34, 56, 0.16);
+  -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 11px);
+  mask-image: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 11px);
+  transition: width 0.5s var(--ease-out);
 }
 
 /* ============================================================

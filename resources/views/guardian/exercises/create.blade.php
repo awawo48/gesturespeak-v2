@@ -7,7 +7,7 @@
 <h1 style="font-size: 1.8rem; margin: 0.4rem 0 1.2rem;">Cipta Latihan Baharu</h1>
 
 @if($errors->any())
-    <div class="card" style="border-left: 5px solid var(--danger); margin-bottom: 1rem; color: var(--danger);">
+    <div class="card" style="border-color: rgba(214, 48, 49, 0.35); background: #fff5f5; margin-bottom: 1rem; color: var(--danger);">
         @foreach($errors->all() as $e)<div>{{ $e }}</div>@endforeach
     </div>
 @endif

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\GestureSample;
 use App\Models\QuizAttempt;
 use App\Models\Sign;
 use App\Models\SignProgress;
@@ -38,10 +39,85 @@ class AdminController extends Controller
         $recentStudents = Student::with('guardians')->latest()->take(6)->get();
         $recentQuizzes = QuizAttempt::with(['student', 'category'])->latest()->take(6)->get();
 
+        // Real AI dataset readiness across BIM curriculum modules
+        $samplesByLabel = GestureSample::selectRaw('UPPER(label) as lbl, sample_type, COUNT(*) as total')
+            ->groupBy('lbl', 'sample_type')
+            ->get()
+            ->groupBy('lbl');
+
+        $moduleReadiness = Category::with('signs')
+            ->orderBy('sort_order')
+            ->get()
+            ->map(function ($cat) use ($samplesByLabel) {
+                $total = $cat->signs->count();
+                $steps = 0;
+                $dtw = 0;
+                $static = 0;
+                foreach ($cat->signs as $sign) {
+                    $types = $samplesByLabel->get(strtoupper($sign->label), collect())->pluck('total', 'sample_type');
+                    if (($types['steps'] ?? 0) > 0) {
+                        $steps++;
+                    } elseif (($types['sequence'] ?? 0) > 0) {
+                        $dtw++;
+                    } elseif (($types['static'] ?? 0) > 0) {
+                        $static++;
+                    }
+                }
+                $ready = $steps + $dtw + $static;
+
+                return [
+                    'name' => $cat->name,
+                    'total' => $total,
+                    'ready' => $ready,
+                    'steps' => $steps,
+                    'dtw' => $dtw,
+                    'static' => $static,
+                    'missing' => max(0, $total - $ready),
+                ];
+            });
+
+        // 7-day daily activity trend for line-chart analysis (SQLite & MySQL compatible)
+        $since = now()->subDays(6)->startOfDay();
+        $quizzesByDay = QuizAttempt::where('created_at', '>=', $since)
+            ->get(['score', 'total', 'created_at'])
+            ->groupBy(fn ($q) => $q->created_at->format('Y-m-d'));
+        $samplesByDay = GestureSample::where('created_at', '>=', $since)
+            ->get(['created_at'])
+            ->groupBy(fn ($s) => $s->created_at->format('Y-m-d'));
+
+        $dailyActivity = collect(range(6, 0))->map(function (int $daysAgo) use ($quizzesByDay, $samplesByDay) {
+            $date = now()->subDays($daysAgo);
+            $key = $date->format('Y-m-d');
+            $dayQuizzes = $quizzesByDay->get($key, collect());
+            $daySamples = $samplesByDay->get($key, collect());
+            $avgPct = $dayQuizzes->isNotEmpty()
+                ? (int) round($dayQuizzes->avg(fn ($q) => $q->total > 0 ? ($q->score / $q->total) * 100 : 0))
+                : null;
+
+            return [
+                'date' => $key,
+                'label' => $daysAgo === 0 ? 'Hari ini' : $date->format('d/m'),
+                'quizzes' => $dayQuizzes->count(),
+                'samples' => $daySamples->count(),
+                'avg_pct' => $avgPct,
+            ];
+        })->values();
+
+        $sampleTotals = GestureSample::selectRaw('sample_type, COUNT(*) as total')
+            ->groupBy('sample_type')
+            ->pluck('total', 'sample_type');
+
         return view('admin.dashboard', [
             'stats' => $stats,
             'recentStudents' => $recentStudents,
             'recentQuizzes' => $recentQuizzes,
+            'moduleReadiness' => $moduleReadiness,
+            'dailyActivity' => $dailyActivity,
+            'sampleTotals' => [
+                'steps' => (int) ($sampleTotals['steps'] ?? 0),
+                'sequence' => (int) ($sampleTotals['sequence'] ?? 0),
+                'static' => (int) ($sampleTotals['static'] ?? 0),
+            ],
         ]);
     }
 

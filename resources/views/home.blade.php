@@ -263,13 +263,34 @@
 <script>
     (() => {
         const speakBtn = document.getElementById('btn-hero-speak');
-        if (!speakBtn || !('speechSynthesis' in window)) return;
-        speakBtn.addEventListener('click', () => {
+        if (!speakBtn) return;
+
+        const ttsUrl = @json(route('tts.speak', ['text' => 'Terima kasih']));
+        const heroAudio = new Audio();
+        heroAudio.preload = 'none';
+
+        function fallbackSpeak() {
+            if (!('speechSynthesis' in window)) return;
             window.speechSynthesis.cancel();
             const utter = new SpeechSynthesisUtterance('Terima kasih');
             utter.lang = 'ms-MY';
             utter.rate = 0.92;
             window.speechSynthesis.speak(utter);
+        }
+
+        speakBtn.addEventListener('click', () => {
+            try {
+                heroAudio.pause();
+            } catch {}
+            heroAudio.onerror = fallbackSpeak;
+            heroAudio.src = ttsUrl;
+            const playPromise = heroAudio.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch(err => {
+                    if (err && err.name === 'AbortError') return;
+                    fallbackSpeak();
+                });
+            }
         });
     })();
 </script>

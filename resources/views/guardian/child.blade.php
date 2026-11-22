@@ -221,7 +221,7 @@
 
 {{-- ROLE-SPECIFIC PANEL: TEACHER FEEDBACK FORM (NO-PRINT) --}}
 @if($isTeacher)
-    <div class="card no-print" style="margin-bottom: 2rem; border-left: 5px solid #0984e3; background: #f8fbff;">
+    <div class="card no-print" style="margin-bottom: 2rem; border-color: rgba(9, 132, 227, 0.24); background: #f8fbff;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
             <div>
                 <h3 style="font-size: 1.25rem; margin: 0; color: #0984e3;">
@@ -267,7 +267,7 @@
 @endif
 
 {{-- READ-ONLY TEACHER REVIEW CARD (VISIBLE TO PARENTS ON SCREEN + ALWAYS VISIBLE ON PRINT) --}}
-<div class="card {{ $isTeacher ? 'print-only' : '' }}" style="margin-bottom: 2rem; border-left: 5px solid #0984e3; background: #f8fbff;">
+<div class="card {{ $isTeacher ? 'print-only' : '' }}" style="margin-bottom: 2rem; border-color: rgba(9, 132, 227, 0.24); background: #f8fbff;">
     <h3 style="font-size: 1.2rem; margin: 0 0 0.6rem; color: #0984e3;">
         <i class="fa-solid fa-school"></i> Ulasan Guru Sekolah &amp; Fokus Latihan
     </h3>
@@ -328,7 +328,7 @@
 
     <div class="print-grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem;">
         @foreach($summary['categories'] as $cat)
-            <div style="background: #f8fafc; border-radius: var(--radius-md); padding: 1rem; border-left: 5px solid {{ $cat['color'] }};">
+            <div style="background: #f8fafc; border-radius: var(--radius-md); padding: 1rem; border: 1px solid var(--border-light);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
                     <div style="font-weight: 800; font-size: 1.05rem;">
                         {{ $cat['icon'] }} {{ $cat['name'] }}
@@ -338,7 +338,7 @@
                     </div>
                 </div>
 
-                <div class="progress-track" style="height: 10px; margin-bottom: 0.4rem;">
+                <div class="progress-track" style="height: 14px; margin-bottom: 0.4rem;">
                     <div class="progress-fill" style="width: {{ $cat['percent'] }}%; background: {{ $cat['color'] }};"></div>
                 </div>
 
@@ -392,7 +392,7 @@
         @else
             <div style="display: flex; flex-direction: column; gap: 0.6rem;">
                 @foreach($needsPractice as $p)
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.7rem; background: #fff5f5; border-radius: var(--radius-sm); border-left: 4px solid #ff7675;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.7rem; background: #fff5f5; border-radius: var(--radius-sm); border: 1px solid rgba(214, 48, 49, 0.2);">
                         <div>
                             <strong>{{ $p->sign->word }}</strong> ({{ $p->sign->meaning_en }})
                             <div style="font-size: 0.75rem; color: var(--text-muted);">

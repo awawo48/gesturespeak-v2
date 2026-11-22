@@ -1,14 +1,17 @@
 @if ($paginator->hasPages())
-<nav role="navigation" aria-label="Paginasi" style="display:flex; flex-direction:column; align-items:center; gap:0.6rem;">
+<nav role="navigation" aria-label="Paginasi" style="display:flex; flex-direction:column; align-items:center; gap:0.5rem;">
     <style>
-        .gs-pager { display:flex; flex-wrap:wrap; gap:0.35rem; list-style:none; margin:0; padding:0; justify-content:center; }
+        .gs-pager { display:flex; flex-wrap:wrap; gap:0.25rem; list-style:none; margin:0; padding:0; justify-content:center; }
         .gs-pager a, .gs-pager span.gs-pg {
-            display:inline-flex; align-items:center; justify-content:center; min-width:38px; height:38px; padding:0 0.7rem;
-            border-radius:10px; border:2px solid var(--border-light, #e2e8f0); background:#fff; color:var(--text-dark, #2d3436);
-            font-weight:800; font-size:0.9rem; text-decoration:none; transition:all .15s ease;
+            display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:34px; padding:0 0.65rem;
+            border-radius:8px; border:1px solid rgba(22, 50, 79, 0.14); background:#fff; color:#16324f;
+            font-weight:500; font-size:0.84rem; text-decoration:none;
+            transition: background-color 140ms cubic-bezier(0.22, 1, 0.36, 1), border-color 140ms cubic-bezier(0.22, 1, 0.36, 1);
         }
-        .gs-pager a:hover { border-color:var(--primary, #6c5ce7); color:var(--primary, #6c5ce7); transform:translateY(-1px); }
-        .gs-pager .gs-active span.gs-pg { background:var(--primary, #6c5ce7); border-color:var(--primary, #6c5ce7); color:#fff; }
+        @media (hover: hover) and (pointer: fine) {
+            .gs-pager a:hover { background:#f3f1ec; border-color:rgba(22, 50, 79, 0.28); }
+        }
+        .gs-pager .gs-active span.gs-pg { background:#16324f; border-color:#16324f; color:#fff; }
         .gs-pager .gs-disabled span.gs-pg { opacity:.45; cursor:not-allowed; }
     </style>
 
@@ -42,9 +45,8 @@
         @endif
     </ul>
 
-    <p style="font-size:0.8rem; color:var(--text-muted, #636e72); margin:0;">
+    <p style="font-size:0.78rem; color:#6b7280; margin:0; font-variant-numeric:tabular-nums;">
         Menunjukkan {{ $paginator->firstItem() }}–{{ $paginator->lastItem() }} daripada {{ $paginator->total() }} rekod
     </p>
 </nav>
 @endif
-

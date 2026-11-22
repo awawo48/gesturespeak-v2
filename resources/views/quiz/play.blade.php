@@ -19,7 +19,7 @@
 <div class="quiz-card" id="quiz-area">
     {{-- VISUAL PROGRESS BAR (Immediate Feedback) --}}
     <div style="margin-bottom: var(--space-5);" aria-label="Kemajuan kuiz">
-        <div class="progress-track" style="height: 10px;">
+        <div class="progress-track" style="height: 14px;">
             <div id="quiz-progress-bar" class="progress-fill" style="width: {{ count($questions) > 0 ? round(100 / count($questions)) : 100 }}%;"></div>
         </div>
     </div>

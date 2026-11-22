@@ -37,8 +37,22 @@ return [
 
     'elevenlabs' => [
         'key' => env('ELEVENLABS_API_KEY', 'sk_f0c59da1375d4b69f2c02e51e8851123447057d7b17a3c60'),
-        'voice_id' => env('ELEVENLABS_VOICE_ID', 'hVL8yfcfFgmDBjBybu2e'),
-        'model_id' => env('ELEVENLABS_MODEL_ID', 'eleven_multilingual_v2'),
+        'voice_id' => env('ELEVENLABS_VOICE_ID', 'JOCyls6Fdo4qfmTUnFrJ'),
+        'model_id' => env('ELEVENLABS_MODEL_ID', 'eleven_v4'),
+        'language_code' => env('ELEVENLABS_LANGUAGE_CODE', 'ms'),
+        'stability' => (float) env('ELEVENLABS_STABILITY', 0.50),
+        'similarity_boost' => (float) env('ELEVENLABS_SIMILARITY_BOOST', 0.75),
+        'clone_strength' => (float) env('ELEVENLABS_CLONE_STRENGTH', 0.0),
+    ],
+
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'tts_model' => env('GEMINI_TTS_MODEL', 'gemini-3.8-flash-tts'),
+        'tts_voice' => env('GEMINI_TTS_VOICE', 'Zephyr'),
+    ],
+
+    'tts' => [
+        'primary' => env('TTS_PRIMARY', 'elevenlabs'),
     ],
 
 ];

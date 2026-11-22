@@ -36,9 +36,11 @@ class AiTrainingController extends Controller
             'allCategories' => $allCategories,
             'sampleCounts' => $this->counts(),
             'sequenceCounts' => $this->sequenceCounts(),
+            'stepCounts' => $this->stepCounts(),
             'totalSamples' => GestureSample::count(),
             'totalStatic' => GestureSample::where('sample_type', 'static')->count(),
             'totalSequence' => GestureSample::where('sample_type', 'sequence')->count(),
+            'totalSteps' => GestureSample::where('sample_type', 'steps')->count(),
         ]);
     }
 
@@ -91,6 +93,38 @@ class AiTrainingController extends Controller
     {
         $sampleType = $request->input('sample_type', 'static');
         $label = strtoupper(trim($request->input('label', '')));
+
+        if ($sampleType === 'steps') {
+            $data = $request->validate([
+                'label' => ['required', 'string', 'max:50'],
+                'steps' => ['required', 'array', 'min:2', 'max:6'],
+                'steps.*.name' => ['nullable', 'string', 'max:40'],
+                'steps.*.f' => ['required', 'array', 'min:63', 'max:146'],
+                'steps.*.f.*' => ['numeric'],
+            ]);
+
+            $normSteps = GestureSample::normaliseSteps($data['steps']);
+
+            GestureSample::create([
+                'label' => $label,
+                'sample_type' => 'steps',
+                'features' => $normSteps,
+                'user_id' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'sample_type' => 'steps',
+                'label' => $label,
+                'saved' => 1,
+                'steps_count' => count($normSteps),
+                'counts' => $this->counts(),
+                'sequence_counts' => $this->sequenceCounts(),
+                'step_counts' => $this->stepCounts(),
+                'total_steps' => GestureSample::where('sample_type', 'steps')->count(),
+                'total_all' => GestureSample::count(),
+            ]);
+        }
 
         if ($sampleType === 'sequence') {
             $data = $request->validate([
@@ -271,11 +305,14 @@ class AiTrainingController extends Controller
     {
         $staticSamples = [];
         $sequenceSamples = [];
+        $stepSamples = [];
 
-        GestureSample::select(['id', 'label', 'sample_type', 'features'])->chunkById(1000, function ($chunk) use (&$staticSamples, &$sequenceSamples) {
+        GestureSample::select(['id', 'label', 'sample_type', 'features'])->chunkById(1000, function ($chunk) use (&$staticSamples, &$sequenceSamples, &$stepSamples) {
             foreach ($chunk as $s) {
                 if ($s->sample_type === 'sequence') {
                     $sequenceSamples[] = ['label' => $s->label, 'frames' => $s->features];
+                } elseif ($s->sample_type === 'steps') {
+                    $stepSamples[] = ['label' => $s->label, 'steps' => $s->features];
                 } else {
                     $staticSamples[] = ['label' => $s->label, 'f' => $s->features];
                 }
@@ -285,6 +322,7 @@ class AiTrainingController extends Controller
         return response()->json([
             'samples' => $staticSamples,
             'sequences' => $sequenceSamples,
+            'steps' => $stepSamples,
         ]);
     }
 
@@ -338,12 +376,19 @@ class AiTrainingController extends Controller
         $request->validate([
             'label' => ['nullable', 'string', 'max:50'],
             'all' => ['nullable', 'boolean'],
+            'sample_type' => ['nullable', 'in:static,sequence,steps'],
         ]);
 
+        $type = $request->input('sample_type');
+
         if ($request->boolean('all')) {
-            GestureSample::query()->delete();
+            GestureSample::query()
+                ->when($type, fn ($q) => $q->where('sample_type', $type))
+                ->delete();
         } elseif ($request->filled('label')) {
-            GestureSample::where('label', strtoupper(trim($request->input('label'))))->delete();
+            GestureSample::where('label', strtoupper(trim($request->input('label'))))
+                ->when($type, fn ($q) => $q->where('sample_type', $type))
+                ->delete();
         } else {
             return response()->json(['success' => false, 'message' => 'Tiada label dipilih.'], 422);
         }
@@ -352,6 +397,7 @@ class AiTrainingController extends Controller
             'success' => true,
             'counts' => $this->counts(),
             'sequence_counts' => $this->sequenceCounts(),
+            'step_counts' => $this->stepCounts(),
             'total_all' => GestureSample::count(),
         ]);
     }
@@ -370,6 +416,17 @@ class AiTrainingController extends Controller
     private function sequenceCounts(): array
     {
         return GestureSample::where('sample_type', 'sequence')
+            ->selectRaw('label, COUNT(*) as total')
+            ->groupBy('label')
+            ->orderBy('label')
+            ->pluck('total', 'label')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+    }
+
+    private function stepCounts(): array
+    {
+        return GestureSample::where('sample_type', 'steps')
             ->selectRaw('label, COUNT(*) as total')
             ->groupBy('label')
             ->orderBy('label')

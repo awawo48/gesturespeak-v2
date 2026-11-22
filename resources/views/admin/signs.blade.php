@@ -1,24 +1,23 @@
-@extends('layouts.app', ['title' => 'Pengurusan Isyarat BIM - Admin'])
+@extends('layouts.admin', ['title' => 'Kurikulum BIM — Sign Cilik'])
 
 @section('content')
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+<div class="adm-page-head">
     <div>
-        <h1 style="font-size: 1.8rem; margin: 0;">Kurikulum & Isyarat BIM</h1>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">Senarai 90 isyarat Bahasa Isyarat Malaysia merentasi 7 modul</p>
+        <h1>Kurikulum &amp; isyarat BIM</h1>
+        <p class="adm-page-sub">Senarai isyarat Bahasa Isyarat Malaysia merentasi modul pembelajaran</p>
     </div>
 
-    {{-- SEARCH & FILTER FORM --}}
-    <form method="GET" action="{{ route('admin.signs') }}" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <form method="GET" action="{{ route('admin.signs') }}" style="display: flex; gap: 8px; flex-wrap: wrap;">
         <input
             type="text"
             name="search"
             value="{{ $search }}"
             class="form-input"
-            placeholder="Cari isyarat..."
-            style="width: 180px; padding: 0.5rem 0.8rem; font-size: 0.9rem;"
+            placeholder="Cari isyarat"
+            style="width: 190px;"
         >
-        <select name="category" class="form-select" style="width: 160px; padding: 0.5rem 0.8rem; font-size: 0.9rem;">
-            <option value="">Semua Modul</option>
+        <select name="category" class="form-select" style="width: 170px;">
+            <option value="">Semua modul</option>
             @foreach($categories as $cat)
                 <option value="{{ $cat->id }}" {{ $selectedCategory == $cat->id ? 'selected' : '' }}>
                     {{ $cat->name }}
@@ -29,98 +28,93 @@
     </form>
 </div>
 
-<div class="card" style="padding: 0; overflow-x: auto;">
-    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
+<div class="adm-card adm-card-flush" tabindex="0" role="region" aria-label="Senarai isyarat BIM">
+    <table class="adm-table">
         <thead>
-            <tr style="background: #f8fafc; border-bottom: 2px solid var(--border-light); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">
-                <th style="padding: 1rem 1.2rem;">Isyarat & Label</th>
-                <th style="padding: 1rem 1.2rem;">Modul</th>
-                <th style="padding: 1rem 1.2rem;">Jenis Isyarat</th>
-                <th style="padding: 1rem 1.2rem;">Status Media</th>
-                <th style="padding: 1rem 1.2rem;">Panduan Kedudukan Jari</th>
-                <th style="padding: 1rem 1.2rem; text-align: right;">Kemaskini</th>
+            <tr>
+                <th>Isyarat &amp; label</th>
+                <th>Modul</th>
+                <th>Jenis</th>
+                <th>Video</th>
+                <th>Panduan jari</th>
+                <th style="text-align: right;">Tindakan</th>
             </tr>
         </thead>
         <tbody>
             @forelse($signs as $sign)
-                <tr style="border-bottom: 1px solid var(--border-light);" x-data="{ open: false }">
-                    <td style="padding: 1rem 1.2rem;">
-                        <strong style="font-size: 1.1rem; color: var(--primary);">{{ $sign->word }}</strong>
-                        <div style="font-size: 0.8rem; color: var(--text-muted);">
-                            Label AI: <code>{{ $sign->label }}</code> &bull; {{ $sign->meaning_en }}
+                <tr>
+                    <td>
+                        <div style="font-weight: 500; color: var(--adm-ink);">{{ $sign->word }}</div>
+                        <div style="font-size: 0.78rem; color: var(--adm-text-muted);">
+                            <span class="adm-mono">{{ $sign->label }}</span>
+                            @if($sign->meaning_en) &middot; {{ $sign->meaning_en }} @endif
                         </div>
                     </td>
-                    <td style="padding: 1rem 1.2rem;">
-                        <span style="font-weight: 800; font-size: 0.85rem; color: {{ $sign->category->color }};">
-                            {{ $sign->category->name }}
-                        </span>
+                    <td style="color: var(--adm-text-secondary); font-size: 0.84rem;">
+                        {{ $sign->category->name }}
                     </td>
-                    <td style="padding: 1rem 1.2rem;">
-                        @if($sign->is_static)
-                            <span class="role-badge" style="background: #e0f2fe; color: #0284c7;">Statik (Kamera AI)</span>
-                        @else
-                            <span class="role-badge" style="background: #fef3c7; color: #d97706;">Dinamik (Pergerakan)</span>
-                        @endif
+                    <td style="color: var(--adm-text-secondary); font-size: 0.84rem;">
+                        {{ $sign->is_static ? 'Statik' : 'Dinamik' }}
                     </td>
-                    <td style="padding: 1rem 1.2rem; font-size: 0.85rem;">
+                    <td>
                         @if($sign->video)
-                            <span style="color: #16a34a;"><i class="fa-solid fa-circle-check"></i> Video Ada</span>
+                            <span class="adm-status"><span class="adm-dot adm-dot--ok"></span>Ada</span>
                         @else
-                            <span style="color: var(--text-muted);"><i class="fa-solid fa-minus"></i> Tiada Video</span>
+                            <span class="adm-status"><span class="adm-dot adm-dot--muted"></span>Tiada</span>
                         @endif
                     </td>
-                    <td style="padding: 1rem 1.2rem; font-size: 0.85rem; max-width: 280px; color: var(--text-dark);">
+                    <td style="font-size: 0.8125rem; max-width: 280px; color: var(--adm-text-muted);">
                         {{ Str::limit($sign->instructions, 60) }}
                     </td>
-                    <td style="padding: 1rem 1.2rem; text-align: right;">
-                        <button type="button" @click="open = !open" class="btn btn-outline btn-sm">
-                            <i class="fa-solid fa-pen-to-square"></i> Edit
+                    <td style="text-align: right; white-space: nowrap;">
+                        <button type="button" class="adm-row-action" command="show-modal" commandfor="edit-sign-{{ $sign->id }}">
+                            Edit
                         </button>
 
-                        {{-- INLINE EDIT MODAL/DRAWER --}}
-                        <div x-show="open" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; padding: 1rem;" :style="{ display: open ? 'flex' : 'none' }">
-                            <div class="card" style="max-width: 500px; width: 100%; text-align: left;" @click.away="open = false">
-                                <h3 style="font-size: 1.3rem; margin-bottom: 1rem;">Kemaskini Isyarat: {{ $sign->word }}</h3>
-                                <form action="{{ route('admin.signs.update', $sign) }}" method="POST">
-                                    @csrf
-                                    @method('PUT')
-
-                                    <div class="form-group">
-                                        <label class="form-label">Perkataan (Bahasa Melayu):</label>
-                                        <input type="text" name="word" value="{{ $sign->word }}" class="form-input" required>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="form-label">Maksud (Bahasa Inggeris):</label>
-                                        <input type="text" name="meaning_en" value="{{ $sign->meaning_en }}" class="form-input">
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="form-label">Jenis Isyarat:</label>
-                                        <select name="is_static" class="form-select">
-                                            <option value="1" {{ $sign->is_static ? 'selected' : '' }}>Statik (Boleh diimbas kamera AI)</option>
-                                            <option value="0" {{ !$sign->is_static ? 'selected' : '' }}>Dinamik (Pergerakan)</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="form-label">Panduan Kedudukan Jari:</label>
-                                        <textarea name="instructions" rows="3" class="form-textarea">{{ $sign->instructions }}</textarea>
-                                    </div>
-
-                                    <div style="display: flex; justify-content: flex-end; gap: 0.8rem; margin-top: 1rem;">
-                                        <button type="button" @click="open = false" class="btn btn-outline btn-sm">Batal</button>
-                                        <button type="submit" class="btn btn-primary btn-sm">Simpan Perubahan</button>
-                                    </div>
-                                </form>
+                        <dialog id="edit-sign-{{ $sign->id }}" class="adm-dialog" closedby="any" aria-labelledby="edit-sign-title-{{ $sign->id }}" style="text-align: left;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h2 id="edit-sign-title-{{ $sign->id }}" style="font-size: 1.05rem; margin: 0;">Kemaskini isyarat: {{ $sign->word }}</h2>
+                                <button type="button" class="adm-row-action" command="close" commandfor="edit-sign-{{ $sign->id }}" aria-label="Tutup">&times;</button>
                             </div>
-                        </div>
+                            <form action="{{ route('admin.signs.update', $sign) }}" method="POST">
+                                @csrf
+                                @method('PUT')
+
+                                <div class="form-group">
+                                    <label class="form-label" for="word-{{ $sign->id }}">Perkataan (Bahasa Melayu)</label>
+                                    <input type="text" id="word-{{ $sign->id }}" name="word" value="{{ $sign->word }}" class="form-input" required autofocus>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="meaning-{{ $sign->id }}">Maksud (Bahasa Inggeris)</label>
+                                    <input type="text" id="meaning-{{ $sign->id }}" name="meaning_en" value="{{ $sign->meaning_en }}" class="form-input">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="static-{{ $sign->id }}">Jenis isyarat</label>
+                                    <select id="static-{{ $sign->id }}" name="is_static" class="form-select">
+                                        <option value="1" {{ $sign->is_static ? 'selected' : '' }}>Statik (pegun)</option>
+                                        <option value="0" {{ !$sign->is_static ? 'selected' : '' }}>Dinamik (pergerakan / urutan langkah)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label" for="inst-{{ $sign->id }}">Panduan kedudukan jari</label>
+                                    <textarea id="inst-{{ $sign->id }}" name="instructions" rows="3" class="form-textarea">{{ $sign->instructions }}</textarea>
+                                </div>
+
+                                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                                    <button type="button" class="btn btn-outline btn-sm" command="close" commandfor="edit-sign-{{ $sign->id }}">Batal</button>
+                                    <button type="submit" class="btn btn-primary btn-sm">Simpan perubahan</button>
+                                </div>
+                            </form>
+                        </dialog>
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                        Tiada isyarat dijumpai.
+                    <td colspan="6" style="text-align: center; padding: 2rem; color: var(--adm-text-muted);">
+                        Tiada isyarat dijumpai
                     </td>
                 </tr>
             @endforelse
@@ -128,7 +122,7 @@
     </table>
 </div>
 
-<div style="margin-top: 1.5rem;">
+<div style="margin-top: 20px;">
     {{ $signs->links() }}
 </div>
 @endsection
