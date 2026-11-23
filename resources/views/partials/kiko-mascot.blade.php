@@ -792,10 +792,20 @@
             window.speechSynthesis.speak(utter);
         }
 
+        let speakReqId = 0;
+
         function speakKiko(text) {
             if (!text) return;
             const clean = String(text).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '').trim();
             if (!clean) return;
+
+            const reqId = ++speakReqId;
+            let fellBack = false;
+            const triggerFallback = () => {
+                if (reqId !== speakReqId || fellBack) return;
+                fellBack = true;
+                fallbackBrowserSpeak(clean);
+            };
 
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -807,7 +817,7 @@
 
             setSpeakingUi(true);
             const url = `${ttsBaseUrl}?text=${encodeURIComponent(clean)}`;
-            kikoAudio.onerror = () => fallbackBrowserSpeak(clean);
+            kikoAudio.onerror = triggerFallback;
             kikoAudio.src = url;
 
             const playPromise = kikoAudio.play();
@@ -815,7 +825,7 @@
                 playPromise.catch(err => {
                     if (err && err.name === 'AbortError') return;
                     console.warn('Audio playback notice, using speechSynthesis fallback:', err);
-                    fallbackBrowserSpeak(clean);
+                    triggerFallback();
                 });
             }
         }

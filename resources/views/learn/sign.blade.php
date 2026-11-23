@@ -374,6 +374,8 @@
     let isMastered = {{ $progress->mastered ? 'true' : 'false' }};
     let consecutiveMatches = 0;
     let lastDynFeedbackUntil = 0;
+    let hasSucceeded = false;
+    let hasShownHoldHint = false;
 
     const knn = new KnnClassifier(5);
     const smoother = new PredictionSmoother(5);
@@ -727,17 +729,20 @@
 
             webcamRunning = true;
 
-            window.Kiko?.say(
-                "Kamera dah aktif! Cuba tunjukkan isyarat \"" + signWord + "\" pada Kiko! 👀🤟",
-                "coach",
-                { duration: 4500 }
-            );
+            if (!hasSucceeded) {
+                window.Kiko?.say(
+                    "Kamera dah aktif! Cuba tunjukkan isyarat \"" + signWord + "\" pada Kiko!",
+                    "coach",
+                    { duration: 4500 }
+                );
+            }
 
             segmenter.reset();
             motionTracker.reset();
             smoother.reset();
             lastPrimaryWrist = null;
             consecutiveMatches = 0;
+            hasShownHoldHint = false;
             lastDynFeedbackUntil = 0;
             lastVideoTime = -1;
 
@@ -751,7 +756,10 @@
                     badge.style.background = "#dcfce7";
                     badge.style.color = "#16a34a";
                 }
-                if (feedbackText) {
+                if (hasSucceeded) {
+                    if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay feedback-success";
+                    if (feedbackText) feedbackText.innerText = `Isyarat "${signWord}" sudah selesai!`;
+                } else if (feedbackText) {
                     feedbackText.innerText = isStaticSign
                         ? "Arahkan tangan anda ke dalam kotak kamera..."
                         : `Sedia — Lakukan gerakan "${signWord}" lalu berhenti sekejap...`;
@@ -971,7 +979,9 @@
                 handsLm.forEach((h, hIdx) => drawHand(canvasCtx, h, canvasElement.width, canvasElement.height, hIdx));
             }
 
-            if (!isStaticSign) {
+            if (hasSucceeded) {
+                // Keep camera preview & skeleton responsive, but stop re-evaluating or re-prompting Kiko once succeeded.
+            } else if (!isStaticSign) {
                 // DEDICATED DYNAMIC CLIP PIPELINE (Auto Mula–Gerak–Tamat, 146-dim 2-hand + Pose + Face)
                 if (landmarks) {
                     motionTracker.push(landmarks);
@@ -1126,9 +1136,10 @@
 
                 if (evalResult.matched) {
                     consecutiveMatches++;
-                    if (consecutiveMatches === 2) {
+                    if (consecutiveMatches === 2 && !hasShownHoldHint) {
+                        hasShownHoldHint = true;
                         window.Kiko?.say(
-                            "Wah, betul tu! Tahan tangan awak sekejap lagi! ✨",
+                            "Wah, betul tu! Tahan tangan awak sekejap lagi!",
                             "happy",
                             { openBubble: false, duration: 2500 }
                         );
@@ -1140,15 +1151,19 @@
                     if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay feedback-success";
 
                     if (consecutiveMatches >= targetFramesRequired) {
+                        if (feedbackText) feedbackText.innerText = `Tahniah! Isyarat "${signWord}" tepat!`;
                         onGestureSuccess(displayConf);
                         consecutiveMatches = 0;
                     }
                 } else {
                     consecutiveMatches = Math.max(0, consecutiveMatches - 1);
+                    if (consecutiveMatches === 0) hasShownHoldHint = false;
                     if (feedbackText) feedbackText.innerText = evalResult.hint || "Arahkan jari mengikut panduan...";
                     if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay";
                 }
             } else {
+                consecutiveMatches = 0;
+                hasShownHoldHint = false;
                 if (feedbackText) feedbackText.innerText = "Arahkan tangan anda ke dalam kotak kamera...";
                 if (feedbackOverlay) feedbackOverlay.className = "feedback-overlay";
                 if (confidencePct) confidencePct.innerText = "0%";
@@ -1403,11 +1418,18 @@
         return { matched, confidence, hint, faceHintOk };
     }
 
-    // Trigger Success Event
+    // Trigger Success Event (once per sign session so Kiko does not spam)
     let isSaving = false;
     async function onGestureSuccess(conf) {
-        if (isSaving) return;
+        if (hasSucceeded || isSaving) return;
+        hasSucceeded = true;
         isSaving = true;
+        consecutiveMatches = 0;
+
+        if (feedbackOverlay && webcamRunning) {
+            feedbackOverlay.className = "feedback-overlay feedback-success";
+            feedbackOverlay.style.display = "block";
+        }
 
         speakWord("Tahniah! Isyarat anda betul!");
 
@@ -1424,29 +1446,34 @@
             });
             const data = await resp.json();
             if (data.success) {
+                isMastered = true;
                 // Update star counter on header
                 const starNav = document.getElementById("nav-star-count");
                 if (starNav) starNav.innerText = data.total_stars;
 
                 if (data.stars_awarded > 0) {
                     window.Kiko?.celebrate(
-                        "YEAY!! Tahniah! Awak berjaya menguasai isyarat \"" + signWord + "\"! 🎉",
+                        "YEAY!! Tahniah! Awak berjaya menguasai isyarat \"" + signWord + "\"!",
                         { stars: data.stars_awarded }
                     );
                 } else {
                     window.Kiko?.celebrate(
-                        "Hebat sekali! Isyarat \"" + signWord + "\" awak sangat tepat dan kemas! 🌟"
+                        "Hebat sekali! Isyarat \"" + signWord + "\" awak sangat tepat dan kemas!"
                     );
                 }
             }
         } catch (e) {
             console.error("Gagal menyimpan kemajuan:", e);
         } finally {
-            setTimeout(() => { isSaving = false; }, 2000);
+            isSaving = false;
         }
     }
 
     window.manualComplete = function() {
+        if (hasSucceeded) return;
+        if (webcamRunning && feedbackText) {
+            feedbackText.innerText = `Tahniah! Isyarat "${signWord}" selesai!`;
+        }
         onGestureSuccess(90);
     };
 </script>
