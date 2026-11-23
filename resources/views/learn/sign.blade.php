@@ -312,6 +312,7 @@
         buildMultimodalVector,
         drawFaceAnchors,
         drawPoseAnchors,
+        getOverlayThemeColors,
         getEffectiveFaceRule,
         evaluateFaceSignBoost,
         isPinkyUpShape,
@@ -978,13 +979,14 @@
                         const trailJoint = targetSign === 'J' ? 'pinky' : (targetSign === 'Z' ? 'index' : 'palm');
                         const trail = motionTracker.getTrail(trailJoint);
                         if (trail.length > 1) {
+                            const theme = getOverlayThemeColors();
                             canvasCtx.save();
                             canvasCtx.beginPath();
-                            canvasCtx.strokeStyle = segmenter.state === "CAPTURING" ? "#38bdf8" : "#ffeaa7";
+                            canvasCtx.strokeStyle = segmenter.state === "CAPTURING" ? theme.blueLight : theme.yellow;
                             canvasCtx.lineWidth = 6;
                             canvasCtx.lineCap = "round";
                             canvasCtx.lineJoin = "round";
-                            canvasCtx.shadowColor = segmenter.state === "CAPTURING" ? "#0284c7" : "#fdcb6e";
+                            canvasCtx.shadowColor = segmenter.state === "CAPTURING" ? theme.blueDark : theme.yellowDark;
                             canvasCtx.shadowBlur = 14;
                             trail.forEach((pt, i) => {
                                 const tx = pt.x * canvasElement.width;
@@ -1158,11 +1160,17 @@
         window.requestAnimationFrame(predictWebcam);
     }
 
-    // Draw skeleton joints on canvas
+    // Draw skeleton joints on canvas (Sign Cilik theme blue & yellow)
     function drawHand(ctx, landmarks, w, h, handIdx = 0) {
-        ctx.strokeStyle = handIdx === 0 ? "#00cec9" : "#a29bfe";
-        ctx.lineWidth = 4;
-        ctx.fillStyle = handIdx === 0 ? "#ff7675" : "#ffeaa7";
+        const theme = getOverlayThemeColors();
+        const isPrimary = handIdx === 0;
+        const keyJoints = new Set([0, 4, 8, 12, 16, 20]); // Wrist & fingertips
+
+        ctx.save();
+        ctx.strokeStyle = isPrimary ? theme.blueLight : theme.yellow;
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
 
         const connections = [
             [0,1],[1,2],[2,3],[3,4], // Thumb
@@ -1180,11 +1188,19 @@
             ctx.stroke();
         });
 
-        landmarks.forEach(p => {
+        ctx.strokeStyle = theme.navy;
+        ctx.lineWidth = 2;
+        landmarks.forEach((p, idx) => {
+            const isKey = keyJoints.has(idx);
             ctx.beginPath();
-            ctx.arc(p.x * w, p.y * h, 5, 0, 2 * Math.PI);
+            ctx.arc(p.x * w, p.y * h, isKey ? 5.5 : 4.5, 0, 2 * Math.PI);
+            ctx.fillStyle = isPrimary
+                ? (isKey ? theme.yellow : theme.blueLight)
+                : (isKey ? theme.blueLight : theme.yellow);
             ctx.fill();
+            ctx.stroke();
         });
+        ctx.restore();
     }
 
     // ML + DTW + Face Context + Heuristic Hybrid Classifier for BIM Signs

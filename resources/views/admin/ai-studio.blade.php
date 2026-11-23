@@ -949,6 +949,7 @@
         selectHandsOrder,
         buildMultimodalVector,
         drawPoseAnchors,
+        getOverlayThemeColors,
         getEffectiveFaceRule,
         KnnClassifier,
         PredictionSmoother,
@@ -1764,13 +1765,14 @@
                     const trail = motionTracker.getTrail(trailJoint);
                     const isMatchedMotion = jCheck.matched || zCheck.matched;
                     if (trail.length > 1) {
+                        const theme = getOverlayThemeColors();
                         ctx.save();
                         ctx.beginPath();
-                        ctx.strokeStyle = isMatchedMotion ? "#2ed573" : "#38bdf8";
+                        ctx.strokeStyle = isMatchedMotion ? theme.green : theme.blueLight;
                         ctx.lineWidth = 5;
                         ctx.lineCap = "round";
                         ctx.lineJoin = "round";
-                        ctx.shadowColor = isMatchedMotion ? "#2ed573" : "#0284c7";
+                        ctx.shadowColor = isMatchedMotion ? theme.green : theme.blueDark;
                         ctx.shadowBlur = 12;
                         trail.forEach((pt, i) => {
                             const tx = pt.x * canvas.width;
@@ -1805,9 +1807,15 @@
 
     function drawSkeleton(lm, handIdx = 0) {
         const w = canvas.width, h = canvas.height;
-        ctx.strokeStyle = handIdx === 0 ? "#00cec9" : "#a29bfe";
+        const theme = getOverlayThemeColors();
+        const isPrimary = handIdx === 0;
+        const keyJoints = new Set([0, 4, 8, 12, 16, 20]); // Wrist & fingertips
+
+        ctx.save();
+        ctx.strokeStyle = isPrimary ? theme.blueLight : theme.yellow;
         ctx.lineWidth = 3;
-        ctx.fillStyle = handIdx === 0 ? "#ff7675" : "#ffeaa7";
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
         const connections = [
             [0,1],[1,2],[2,3],[3,4], [0,5],[5,6],[6,7],[7,8], [0,9],[9,10],[10,11],[11,12],
             [0,13],[13,14],[14,15],[15,16], [0,17],[17,18],[18,19],[19,20], [5,9],[9,13],[13,17],[0,17]
@@ -1820,9 +1828,16 @@
         });
         lm.forEach((p, idx) => {
             const px = p.x * w, py = p.y * h;
+            const isKey = keyJoints.has(idx);
             ctx.beginPath();
-            ctx.arc(px, py, 4, 0, 2 * Math.PI);
+            ctx.arc(px, py, isKey ? 5 : 4, 0, 2 * Math.PI);
+            ctx.fillStyle = isPrimary
+                ? (isKey ? theme.yellow : theme.blueLight)
+                : (isKey ? theme.blueLight : theme.yellow);
             ctx.fill();
+            ctx.strokeStyle = theme.navy;
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
 
             if (showJointNumbers) {
                 ctx.save();
@@ -1830,13 +1845,14 @@
                 if (isMirrored) ctx.scale(-1, 1);
                 ctx.font = "bold 11px Nunito, sans-serif";
                 ctx.fillStyle = "#ffffff";
-                ctx.strokeStyle = "rgba(15,23,42,0.85)";
+                ctx.strokeStyle = theme.navy;
                 ctx.lineWidth = 2.5;
                 ctx.strokeText(String(idx), 6, -5);
                 ctx.fillText(String(idx), 6, -5);
                 ctx.restore();
             }
         });
+        ctx.restore();
     }
 
     // ---------- Target Sign Selection ----------
