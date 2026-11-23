@@ -73,6 +73,9 @@ class DynamicViewsSmokeTest extends TestCase
             ->get(route('learn.sign', [$cat, $staticSign]));
 
         $staticResp->assertStatus(200);
+        $staticResp->assertSee('if (hasSucceeded || isSaving) return;', false);
+        $staticResp->assertSee('if (consecutiveMatches === 2 && !hasShownHoldHint)', false);
+        $staticResp->assertDontSee('setTimeout(() => { isSaving = false; }, 2000);', false);
     }
 
     public function test_admin_ai_studio_renders_dual_mode_live_tester_and_auto_sequence_hooks(): void
