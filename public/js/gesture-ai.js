@@ -489,27 +489,58 @@ export function buildMultimodalVector(handsLm, handedness = null, faceContext = 
 }
 
 /**
+ * Reads Sign Cilik theme colors from CSS :root tokens for canvas overlays
+ * (hand landmarks, pose/face anchors, and motion trails).
+ */
+let _cachedOverlayTheme = null;
+export function getOverlayThemeColors() {
+    if (_cachedOverlayTheme) return _cachedOverlayTheme;
+    const read = (token, fallback) => {
+        if (typeof document === "undefined" || typeof getComputedStyle !== "function") return fallback;
+        const val = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+        return val || fallback;
+    };
+    _cachedOverlayTheme = {
+        blue: read("--secondary", "#26b0e5"),
+        blueLight: read("--secondary-light", "#58caf3"),
+        blueDark: read("--secondary-dark", "#0284c7"),
+        yellow: read("--accent", "#ffe942"),
+        yellowDark: read("--accent-gold", "#eab308"),
+        navy: read("--primary-dark", "#0f2238"),
+        green: read("--pixel-green", "#22c55e"),
+    };
+    return _cachedOverlayTheme;
+}
+
+/**
  * Draws lightweight upper-body shoulder anchor guide for dynamic signing.
  */
 export function drawPoseAnchors(ctx, poseLm, w, h, poseContext = null) {
     const anchors = poseContext?.anchors || extractPoseContext(poseLm)?.anchors;
     if (!anchors || !ctx) return;
     const { leftShoulder, rightShoulder, shoulderCenter } = anchors;
+    const theme = getOverlayThemeColors();
 
     ctx.save();
     ctx.beginPath();
     ctx.setLineDash([6, 5]);
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.55)";
+    ctx.strokeStyle = theme.blueLight;
+    ctx.globalAlpha = 0.65;
     ctx.lineWidth = 2;
     ctx.moveTo(leftShoulder.x * w, leftShoulder.y * h);
     ctx.lineTo(rightShoulder.x * w, rightShoulder.y * h);
     ctx.stroke();
 
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.95;
     [leftShoulder, shoulderCenter, rightShoulder].forEach((pt, idx) => {
         ctx.beginPath();
-        ctx.arc(pt.x * w, pt.y * h, idx === 1 ? 5 : 4, 0, 2 * Math.PI);
-        ctx.fillStyle = idx === 1 ? "#38bdf8" : "rgba(255, 234, 167, 0.85)";
+        ctx.arc(pt.x * w, pt.y * h, idx === 1 ? 5 : 4.5, 0, 2 * Math.PI);
+        ctx.fillStyle = idx === 1 ? theme.blueLight : theme.yellow;
         ctx.fill();
+        ctx.strokeStyle = theme.navy;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
     });
     ctx.restore();
 }
@@ -520,6 +551,7 @@ export function drawPoseAnchors(ctx, poseLm, w, h, poseContext = null) {
 export function drawFaceAnchors(ctx, faceLm, w, h, faceContext = null) {
     if (!faceLm || !faceContext?.anchors) return;
     const { forehead, leftEye, rightEye, nose, leftCheek, rightCheek, mouth, chin } = faceContext.anchors;
+    const theme = getOverlayThemeColors();
 
     ctx.save();
 
@@ -532,9 +564,11 @@ export function drawFaceAnchors(ctx, faceLm, w, h, faceContext = null) {
         if (i === 0) ctx.moveTo(p.x * w, p.y * h);
         else ctx.lineTo(p.x * w, p.y * h);
     });
-    ctx.strokeStyle = "rgba(129, 236, 236, 0.35)";
+    ctx.strokeStyle = theme.blueLight;
+    ctx.globalAlpha = 0.4;
     ctx.lineWidth = 1.8;
     ctx.stroke();
+    ctx.globalAlpha = 1;
 
     // Key BIM spatial anchor dots
     const anchorMap = [
@@ -552,15 +586,19 @@ export function drawFaceAnchors(ctx, faceLm, w, h, faceContext = null) {
         const isActive = faceContext.zone === a.key;
         const ax = a.pt.x * w, ay = a.pt.y * h;
         ctx.beginPath();
-        ctx.arc(ax, ay, isActive ? 6.5 : 3, 0, 2 * Math.PI);
-        ctx.fillStyle = isActive ? "#2ed573" : "rgba(255, 234, 167, 0.75)";
+        ctx.arc(ax, ay, isActive ? 6.5 : 3.5, 0, 2 * Math.PI);
+        ctx.fillStyle = isActive ? theme.green : theme.yellow;
         if (isActive) {
-            ctx.shadowColor = "#2ed573";
+            ctx.shadowColor = theme.green;
             ctx.shadowBlur = 12;
         } else {
             ctx.shadowBlur = 0;
         }
         ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = theme.navy;
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
     }
 
     // Draw dashed proximity link between fingertip & active face zone
@@ -569,7 +607,7 @@ export function drawFaceAnchors(ctx, faceLm, w, h, faceContext = null) {
         if (targetAnchor) {
             ctx.beginPath();
             ctx.setLineDash([5, 4]);
-            ctx.strokeStyle = "#2ed573";
+            ctx.strokeStyle = theme.green;
             ctx.lineWidth = 2.2;
             ctx.moveTo(faceContext.activeContactPt.x * w, faceContext.activeContactPt.y * h);
             ctx.lineTo(targetAnchor.x * w, targetAnchor.y * h);
