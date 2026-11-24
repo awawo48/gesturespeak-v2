@@ -18,7 +18,6 @@
                 <h1 class="hero-greeting">Hai, {{ $student->name }}! 🌟</h1>
                 <div class="hero-meta-row">
                     <span class="pixel-code pixel-code--dark">KOD: {{ $student->student_code }}</span>
-                    <span class="school-label">{{ $student->grade ?? 'Tahun 2 Pintar' }} &bull; {{ $student->school ?? 'SK Seri Cilik' }}</span>
                 </div>
             </div>
         </div>
@@ -41,6 +40,28 @@
     </div>
 
     {{-- Tier 2: Dual Mission Deck --}}
+    @php
+        $tExercise = $teacherExercise ?? $student->teacherExercises()->first();
+        $assignedCat = $student->assignedCategory;
+
+        if ($tExercise) {
+            $taskUrl = route('quiz.exercise', $tExercise);
+            $taskTitle = 'Latihan: ' . $tExercise->title;
+            $taskTeacher = $tExercise->teacher->name ?? 'Cikgu';
+            $taskSub = $student->teacher_note ? '“' . $student->teacher_note . '”' : count($tExercise->items ?? []) . ' soalan latihan daripada Cikgu';
+        } elseif ($assignedCat) {
+            $taskUrl = route('learn.category', $assignedCat);
+            $taskTitle = 'Modul: ' . $assignedCat->name;
+            $taskTeacher = $student->teacherReviewer->name ?? 'Cikgu';
+            $taskSub = $student->teacher_note ? '“' . $student->teacher_note . '”' : $assignedCat->signs_count . ' isyarat untuk dipelajari';
+        } else {
+            $defaultCat = $categories->first();
+            $taskUrl = $defaultCat ? route('learn.category', $defaultCat) : route('learn.hub');
+            $taskTitle = $defaultCat ? 'Modul: ' . $defaultCat->name : 'Latihan BIM';
+            $taskTeacher = $student->teacherReviewer->name ?? 'Cikgu';
+            $taskSub = $student->teacher_note ? '“' . $student->teacher_note . '”' : 'Terokai latihan isyarat bersama Cikgu';
+        }
+    @endphp
     <div class="hero-mission-deck">
         {{-- Mission Tile 1: Tugasan Cikgu --}}
         <div class="mission-tile mission-tile--homework">
@@ -50,18 +71,17 @@
                 </div>
                 <div class="mission-details">
                     <div class="mission-kicker-row">
-                        <span class="mission-tag">TUGASAN {{ Str::upper($student->teacherReviewer->name ?? 'CIKGU') }}</span>
-                        <span class="due-chip">Hantar: Khamis</span>
+                        <span class="mission-tag">TUGASAN {{ Str::upper($taskTeacher) }}</span>
                     </div>
                     <h2 class="mission-title">
-                        Modul: {{ $student->assignedCategory->name ?? 'Ucapan Harian' }}!
+                        {{ $taskTitle }}
                     </h2>
                     <p class="mission-sub">
-                        {{ $student->teacher_note ? '“' . $student->teacher_note . '”' : '5 isyarat salam · Kumpul 20 bintang bonus' }}
+                        {{ $taskSub }}
                     </p>
                 </div>
             </div>
-            <a href="{{ $student->assignedCategory ? route('learn.category', $student->assignedCategory) : '#modul-pembelajaran' }}" class="btn btn-mission-homework">
+            <a href="{{ $taskUrl }}" class="btn btn-mission-homework">
                 Buka Tugasan &rarr;
             </a>
         </div>
@@ -171,7 +191,7 @@
                         </span>
                         @if($p->best_confidence)
                             <span class="pixel-stat-chip">
-                                Padanan: {{ round($p->best_confidence * 100) }}%
+                                Padanan: {{ round($p->best_confidence > 1 ? $p->best_confidence : $p->best_confidence * 100) }}%
                             </span>
                         @endif
                         @if($p->mastered)

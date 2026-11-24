@@ -82,8 +82,14 @@ class KidPortalHubTest extends TestCase
 
         // Mission Tile 1: Tugasan Cikgu
         $response->assertSee('TUGASAN CIKGU SARAH', false);
-        $response->assertSee('Modul: Ucapan Harian!', false);
+        $response->assertSee('Modul: Ucapan Harian', false);
         $response->assertSee('Buka Tugasan', false);
+        $response->assertSee(route('learn.category', $catGreetings), false);
+
+        // Verification of user requested removals:
+        $response->assertDontSee('Tahun 2 Pintar', false);
+        $response->assertDontSee('SK Seri Cilik', false);
+        $response->assertDontSee('Hantar: Khamis', false);
 
         // Mission Tile 2: Cabaran Kuiz BIM
         $response->assertSee('CABARAN MINGGUAN', false);
@@ -100,6 +106,80 @@ class KidPortalHubTest extends TestCase
         $response->assertSee('Latihan Terkini Anda', false);
         $response->assertSee('Terima Kasih', false);
         $response->assertSee('Padanan: 96%', false);
+        $response->assertDontSee('10000%', false);
         $response->assertSee('Dikuasai', false);
+    }
+
+    public function test_kid_portal_hub_handles_100_percent_confidence_and_teacher_exercise(): void
+    {
+        $teacher = User::factory()->create([
+            'name' => 'Cikgu Rahman',
+            'role' => User::ROLE_TEACHER,
+            'status' => User::STATUS_APPROVED,
+        ]);
+
+        $cat = Category::create([
+            'slug' => 'nombor-bim',
+            'name' => 'Nombor BIM',
+            'name_en' => 'Numbers',
+            'description' => 'Isyarat nombor',
+            'icon' => 'nombor',
+            'color' => '#ffe942',
+            'sort_order' => 1,
+        ]);
+
+        $sign = Sign::create([
+            'category_id' => $cat->id,
+            'label' => 'SATU',
+            'word' => 'Satu',
+            'meaning_en' => 'One',
+            'instructions' => 'Tunjuk jari telunjuk ke atas.',
+            'is_static' => true,
+            'sort_order' => 1,
+        ]);
+
+        $student = Student::create([
+            'student_code' => 'SITI-5678',
+            'name' => 'Siti',
+            'age' => 7,
+            'pin' => '5678',
+            'avatar' => 'rabbit',
+            'stars' => 80,
+        ]);
+
+        $student->guardians()->attach($teacher->id, ['relationship' => User::ROLE_TEACHER]);
+
+        // Teacher created an exercise
+        $exercise = \App\Models\Exercise::create([
+            'user_id' => $teacher->id,
+            'title' => 'Latihan Nombor Asas',
+            'type' => \App\Models\Exercise::TYPE_CHOICE,
+            'items' => [$sign->id],
+            'is_active' => true,
+        ]);
+
+        // Progress with 100.00 confidence
+        SignProgress::create([
+            'student_id' => $student->id,
+            'sign_id' => $sign->id,
+            'viewed_at' => now(),
+            'practice_count' => 5,
+            'best_confidence' => 100.00,
+            'mastered' => true,
+        ]);
+
+        $response = $this->actingAs($student, 'student')->get(route('learn.hub'));
+
+        $response->assertStatus(200);
+
+        // Best confidence should show 100% (never 10000%)
+        $response->assertSee('Padanan: 100%', false);
+        $response->assertDontSee('10000%', false);
+
+        // Buka Tugasan should link to the teacher exercise
+        $response->assertSee('Latihan: Latihan Nombor Asas', false);
+        $response->assertSee(route('quiz.exercise', $exercise), false);
+        $response->assertDontSee('Hantar: Khamis', false);
+        $response->assertDontSee('Tahun 2 Pintar', false);
     }
 }

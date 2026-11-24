@@ -22,6 +22,7 @@ class LearningController extends Controller
     {
         $student = Auth::guard('student')->user();
         $student->load(['assignedCategory', 'teacherReviewer']);
+        $teacherExercise = $student->teacherExercises()->first();
         $summary = $student->progressSummary();
 
         $categories = Category::withCount('signs')
@@ -47,6 +48,7 @@ class LearningController extends Controller
             'categories' => $categories,
             'summary' => $summary,
             'recentProgress' => $recentProgress,
+            'teacherExercise' => $teacherExercise,
         ]);
     }
 

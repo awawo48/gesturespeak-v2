@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -43,5 +44,15 @@ class DatabaseSeeder extends Seeder
             $parent->id => ['relationship' => User::ROLE_PARENT],
             $teacher->id => ['relationship' => User::ROLE_TEACHER],
         ]);
+
+        $salamCat = Category::where('slug', 'salam')->first();
+        if ($salamCat) {
+            $child->update([
+                'assigned_category_id' => $salamCat->id,
+                'teacher_note' => 'Sila buat latihan isyarat salam minggu ini ya!',
+                'teacher_note_by' => $teacher->id,
+                'teacher_note_updated_at' => now(),
+            ]);
+        }
     }
 }
